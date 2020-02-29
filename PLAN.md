@@ -1,13 +1,15 @@
 # Notes
 
 ## Timetable
-- Saturday: temp graphics, get entities on screen and fighting
-- Sunday: dungeon generation, should be playable at this point
+- Saturday: ~~temp graphics, get entities on screen and fighting~~
+  - Spent the day sleeping and otherwise AFK, starting sunday instead.
+- Sunday: temp graphics, get entities on screen and fighting
 - Monday: little time, clean up / procrastination day
-- Tuesday: content day, items & enemies
-- Wednesday: polish / catchup
-- Thursday: _polish_ / catchup
-- Friday: playtesting, bugfixes
+- Tuesday: dungeon generation, should be playable at this point
+- Wednesday: content day, items & enemies
+- Thursday: polish / catchup
+- Friday: _polish_ / catchup
+- Saturday: playtesting, bugfixes
 
 ## Core ideas
 - Only two items: an offensive and a defensive item.
