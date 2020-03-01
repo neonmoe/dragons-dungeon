@@ -1,4 +1,5 @@
 use crate::sprites::SpriteData;
+use crate::world::ai::Ai;
 
 #[derive(Debug, Clone)]
 pub struct Entity {
@@ -6,6 +7,7 @@ pub struct Entity {
     pub sprite: Sprite,
     pub denies_movement: bool,
     pub health: Option<Health>,
+    pub ai: Option<Ai>,
 }
 
 #[derive(Debug, Clone)]

@@ -1,6 +1,8 @@
+mod ai;
 mod entity;
 
 use crate::sprites;
+use ai::{Ai, SkeletonAi};
 use entity::{Entity, Health, Position, Sprite};
 
 use fae::{Font, GraphicsContext, Spritesheet};
@@ -41,6 +43,7 @@ impl World {
                         current: 16,
                         max: 16,
                     }),
+                    ai: None,
                 },
                 Entity {
                     position: Position { x: 1, y: 2 },
@@ -49,12 +52,37 @@ impl World {
                     },
                     denies_movement: true,
                     health: None,
+                    ai: None,
+                },
+                Entity {
+                    position: Position { x: 5, y: 5 },
+                    sprite: Sprite {
+                        data: sprites::SKELETON,
+                    },
+                    denies_movement: true,
+                    health: Some(Health { current: 8, max: 8 }),
+                    ai: Some(Ai::Skeleton(SkeletonAi::new())),
                 },
             ],
         }
     }
 
     pub fn update(&mut self, action: PlayerAction) {
+        // Update player
+        self.update_player(action);
+
+        // Update the rest of the entities, in order
+        for i in 1..self.entities.len() {
+            let (entity, others) = self.split_entities(i);
+            if let Some(ai) = &mut entity.ai {
+                match ai {
+                    Ai::Skeleton(ai) => ai.update(&mut entity.position, others),
+                }
+            }
+        }
+    }
+
+    fn update_player(&mut self, action: PlayerAction) {
         let (player, others) = self.split_entities(0);
         let mut move_direction = None;
         match action {
@@ -65,7 +93,7 @@ impl World {
             PlayerAction::Wait => {}
         };
         if let Some((xd, yd)) = move_direction {
-            move_entity(player, others, xd, yd);
+            move_entity(&mut player.position, others, xd, yd);
         }
     }
 
@@ -75,12 +103,18 @@ impl World {
 
     pub fn render(&self, ctx: &mut GraphicsContext, _font: &Font, tileset: &Spritesheet) {
         let tile_size = 32;
+        let drawable_width = (ctx.width - crate::ui::UI_AREA_WIDTH) as i32;
+        let drawable_height = ctx.height as i32;
+        let offset = (
+            drawable_width / 2 - (self.entities[0].position.x * 2 + 1) * tile_size / 2,
+            drawable_height as i32 / 2 - (self.entities[0].position.y * 2 + 1) * tile_size / 2,
+        );
         for (position, sprite) in self.entities.iter().map(|e| (&e.position, &e.sprite)) {
             tileset
                 .draw(ctx)
                 .coordinates((
-                    position.x * tile_size,
-                    position.y * tile_size,
+                    position.x * tile_size + offset.0,
+                    position.y * tile_size + offset.1,
                     tile_size,
                     tile_size,
                 ))
@@ -94,13 +128,17 @@ impl World {
             .iter()
             .filter_map(|e| e.health.as_ref().map(|health| (&e.position, health)))
         {
-            let pos = (position.x, position.y);
+            let pos = (
+                position.x * tile_size + offset.0,
+                position.y * tile_size + offset.1,
+            );
             let dark = (0.2, 0.5, 0.8, 0.8);
             let light = (0.9, 0.1, 0.0, 1.0);
             draw_hearts(ctx, tileset, pos, tile_size, dark, health.max);
             draw_hearts(ctx, tileset, pos, tile_size, light, health.current);
         }
     }
+
     fn split_entities(&mut self, separated_index: usize) -> (&mut Entity, EntityIter) {
         let (head, tail) = self.entities.split_at_mut(separated_index);
         let (separated, tail) = tail.split_at_mut(1);
@@ -108,15 +146,15 @@ impl World {
     }
 }
 
-fn move_entity(entity: &mut Entity, others: EntityIter, xd: i32, yd: i32) -> bool {
-    let (new_x, new_y) = (entity.position.x + xd, entity.position.y + yd);
+fn move_entity(position: &mut Position, others: EntityIter, xd: i32, yd: i32) -> bool {
+    let (new_x, new_y) = (position.x + xd, position.y + yd);
     for other in others.filter(|e| e.denies_movement) {
         if new_x == other.position.x && new_y == other.position.y {
             return false;
         }
     }
-    entity.position.x = new_x;
-    entity.position.y = new_y;
+    position.x = new_x;
+    position.y = new_y;
     true
 }
 
@@ -129,10 +167,11 @@ fn draw_hearts(
     heart_quarters: i32,
 ) {
     let hearts_total = (heart_quarters as f32 / 4.0).ceil() as i32;
+    let rows = (hearts_total as f32 / 3.0).ceil() as i32;
     for i in 0..hearts_total {
         let coords = (
-            x * tile_size + tile_size / 4 * i,
-            y * tile_size - tile_size / 4,
+            x + tile_size / 4 * (i % 3) + tile_size / 8,
+            y - tile_size / 4 * rows + tile_size / 4 * (i / 3),
             tile_size / 4,
             tile_size / 4,
         );

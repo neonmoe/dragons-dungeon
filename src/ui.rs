@@ -1,5 +1,7 @@
 use fae::{Font, GraphicsContext, Spritesheet};
 
+pub const UI_AREA_WIDTH: f32 = 170.0;
+
 pub struct Ui {}
 
 impl Ui {
@@ -10,8 +12,8 @@ impl Ui {
     pub fn render(&mut self, ctx: &mut GraphicsContext, font: &Font, spritesheet: &Spritesheet) {
         let (width, height) = (ctx.width, ctx.height);
 
-        let mut menu_cursor_x = width - 160.0;
         let mut menu_cursor_y = 10.0;
+        let mut menu_cursor_x = width - UI_AREA_WIDTH + menu_cursor_y;
         spritesheet
             .draw(ctx)
             .coordinates((
