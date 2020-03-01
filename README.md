@@ -24,6 +24,10 @@ libraries installed, and then simply:
 cargo build --release
 ```
 
+#### Windows note
+The DLLs and .libs are bundled in the `lib/windows` directory. The
+appropriate DLL will be copied into `target/release` when building.
+
 ### Statically linked
 If you want to build SDL2 inside your executable, to avoid having to
 mess about with dependencies or such, enable the `static-link`

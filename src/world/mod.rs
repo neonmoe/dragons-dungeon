@@ -127,6 +127,8 @@ impl World {
             1.0
         };
 
+        // TODO: Make the player animate before everyone else.
+
         if self.animation_timer == 0.0 {
             // First frame of the current round, update everything
             // accordingly.
