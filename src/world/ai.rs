@@ -9,9 +9,20 @@ pub enum Ai {
     //Dragon,
 }
 
+const SKELETON_PATH: [(i32, i32); 8] = [
+    (1, 0),
+    (1, 0),
+    (0, -1),
+    (-1, 0),
+    (0, 1),
+    (-1, 0),
+    (0, -1),
+    (0, 1),
+];
+
 #[derive(Debug, Clone)]
 pub struct SkeletonAi {
-    step: i32,
+    step: usize,
 }
 
 impl SkeletonAi {
@@ -20,13 +31,8 @@ impl SkeletonAi {
     }
 
     pub fn update(&mut self, position: &mut Position, others: EntityIter) {
-        match self.step {
-            0 => super::move_entity(position, others, 1, 0),
-            1 => super::move_entity(position, others, 0, 1),
-            2 => super::move_entity(position, others, -1, 0),
-            3 => super::move_entity(position, others, 0, -1),
-            _ => false,
-        };
-        self.step = (self.step + 1) % 4;
+        let (xd, yd) = SKELETON_PATH[self.step];
+        super::move_entity(position, others, xd, yd);
+        self.step = (self.step + 1) % SKELETON_PATH.len();
     }
 }

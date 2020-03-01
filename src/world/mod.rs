@@ -3,7 +3,7 @@ mod entity;
 
 use crate::sprites;
 use ai::{Ai, SkeletonAi};
-use entity::{Entity, Health, Position, Sprite};
+use entity::{Animation, Entity, Health, Position, Sprite};
 
 use fae::{Font, GraphicsContext, Spritesheet};
 
@@ -26,7 +26,16 @@ pub enum PlayerAction {
 
 #[derive(Debug, Clone)]
 pub struct World {
+    /// An ever-permanent entity collection, which should be
+    /// initialized all at once, and never removed from.
     entities: Vec<Entity>,
+
+    /// Every round we'll copy the whole state over to this Vec, just
+    /// so animations can be done nicely. Sounds wasteful, probably
+    /// is, but honestly, the whole game state is probably a few megs
+    /// at most.
+    previous_round_entities: Option<Vec<Entity>>,
+    animation_timer: f32,
 }
 
 impl World {
@@ -38,10 +47,11 @@ impl World {
                     sprite: Sprite {
                         data: sprites::PLAYER,
                     },
+                    animation: Animation { x: 0.0, y: 0.0 },
                     denies_movement: true,
                     health: Some(Health {
-                        current: 16,
-                        max: 16,
+                        current: 24,
+                        max: 24,
                     }),
                     ai: None,
                 },
@@ -50,6 +60,7 @@ impl World {
                     sprite: Sprite {
                         data: sprites::WALL,
                     },
+                    animation: Animation { x: 0.0, y: 0.0 },
                     denies_movement: true,
                     health: None,
                     ai: None,
@@ -59,15 +70,23 @@ impl World {
                     sprite: Sprite {
                         data: sprites::SKELETON,
                     },
+                    animation: Animation { x: 0.0, y: 0.0 },
                     denies_movement: true,
                     health: Some(Health { current: 8, max: 8 }),
                     ai: Some(Ai::Skeleton(SkeletonAi::new())),
                 },
             ],
+            previous_round_entities: None,
+            animation_timer: 0.0,
         }
     }
 
     pub fn update(&mut self, action: PlayerAction) {
+        // Huuuge clone, I know. See the docs for
+        // `self.previous_round_entities`.
+        self.previous_round_entities = Some(self.entities.clone());
+        self.animation_timer = 0.0;
+
         // Update player
         self.update_player(action);
 
@@ -97,24 +116,64 @@ impl World {
         }
     }
 
-    pub fn animate(&mut self, _delta_seconds: f32) {
-        // TODO: Animations for entities
+    pub fn animate(&mut self, delta_seconds: f32) {
+        let previous_round_entities = match &self.previous_round_entities {
+            Some(entities) => entities,
+            None => return,
+        };
+
+        if self.animation_timer == 0.0 {
+            // First frame of the current round, update everything
+            // accordingly.
+            for i in 0..self.entities.len() {
+                let current = &mut self.entities[i];
+                let previous = &previous_round_entities[i];
+                let (xd, yd) = (
+                    current.position.x - previous.position.x,
+                    current.position.y - previous.position.y,
+                );
+                current.animation.x -= xd as f32;
+                current.animation.y -= yd as f32;
+            }
+        } else {
+            let clamped_lerp = |a: f32, b: f32, x: f32| {
+                if a > b {
+                    (a + (b - a) * x).max(b)
+                } else {
+                    (a + (b - a) * x).min(b)
+                }
+            };
+            for animation in self.entities.iter_mut().map(|e| &mut e.animation) {
+                animation.x = clamped_lerp(animation.x, 0.0, delta_seconds * 20.0);
+                animation.y = clamped_lerp(animation.y, 0.0, delta_seconds * 20.0);
+            }
+        }
+        self.animation_timer += delta_seconds;
     }
 
     pub fn render(&self, ctx: &mut GraphicsContext, _font: &Font, tileset: &Spritesheet) {
-        let tile_size = 32;
-        let drawable_width = (ctx.width - crate::ui::UI_AREA_WIDTH) as i32;
-        let drawable_height = ctx.height as i32;
-        let offset = (
-            drawable_width / 2 - (self.entities[0].position.x * 2 + 1) * tile_size / 2,
-            drawable_height as i32 / 2 - (self.entities[0].position.y * 2 + 1) * tile_size / 2,
-        );
-        for (position, sprite) in self.entities.iter().map(|e| (&e.position, &e.sprite)) {
+        let tile_size = 32.0;
+        let drawable_width = ctx.width - crate::ui::UI_AREA_WIDTH;
+        let drawable_height = ctx.height;
+        let offset = {
+            let player = &self.entities[0];
+            let focus_x = player.position.x as f32 + player.animation.x + 0.5;
+            let focus_y = player.position.y as f32 + player.animation.y + 0.5;
+            (
+                drawable_width / 2.0 - focus_x * tile_size,
+                drawable_height / 2.0 - focus_y * tile_size,
+            )
+        };
+        for (position, sprite, animation) in self
+            .entities
+            .iter()
+            .map(|e| (&e.position, &e.sprite, &e.animation))
+        {
             tileset
                 .draw(ctx)
                 .coordinates((
-                    position.x * tile_size + offset.0,
-                    position.y * tile_size + offset.1,
+                    (position.x as f32 + animation.x) * tile_size + offset.0,
+                    (position.y as f32 + animation.y) * tile_size + offset.1,
                     tile_size,
                     tile_size,
                 ))
@@ -123,14 +182,14 @@ impl World {
                 .finish();
         }
 
-        for (position, health) in self
-            .entities
-            .iter()
-            .filter_map(|e| e.health.as_ref().map(|health| (&e.position, health)))
-        {
+        for (position, animation, health) in self.entities.iter().filter_map(|e| {
+            e.health
+                .as_ref()
+                .map(|health| (&e.position, &e.animation, health))
+        }) {
             let pos = (
-                position.x * tile_size + offset.0,
-                position.y * tile_size + offset.1,
+                (position.x as f32 + animation.x) * tile_size + offset.0,
+                (position.y as f32 + animation.y) * tile_size + offset.1,
             );
             let dark = (0.2, 0.5, 0.8, 0.8);
             let light = (0.9, 0.1, 0.0, 1.0);
@@ -161,8 +220,8 @@ fn move_entity(position: &mut Position, others: EntityIter, xd: i32, yd: i32) ->
 fn draw_hearts(
     ctx: &mut GraphicsContext,
     tileset: &Spritesheet,
-    (x, y): (i32, i32),
-    tile_size: i32,
+    (x, y): (f32, f32),
+    tile_size: f32,
     tint: (f32, f32, f32, f32),
     heart_quarters: i32,
 ) {
@@ -170,10 +229,10 @@ fn draw_hearts(
     let rows = (hearts_total as f32 / 3.0).ceil() as i32;
     for i in 0..hearts_total {
         let coords = (
-            x + tile_size / 4 * (i % 3) + tile_size / 8,
-            y - tile_size / 4 * rows + tile_size / 4 * (i / 3),
-            tile_size / 4,
-            tile_size / 4,
+            x + tile_size / 4.0 * (i % 3) as f32 + tile_size / 8.0,
+            y - tile_size / 4.0 * rows as f32 + tile_size / 4.0 * (i / 3) as f32,
+            tile_size / 4.0,
+            tile_size / 4.0,
         );
         let quarters = (4 - (heart_quarters - i * 4)).max(0) as usize;
         tileset
