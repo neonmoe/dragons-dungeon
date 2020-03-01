@@ -1,0 +1,23 @@
+[package]
+name = "sevendrl"
+version = "0.1.0"
+authors = ["Jens Pitkanen <jens@neon.moe>"]
+edition = "2018"
+
+[dependencies]
+sdl2 = { version = "0.33.0" }
+fae = { path = "../fae", features = ["text", "ttf", "png"] }
+log = { version = "0.4.8" }
+
+[features]
+default = []
+static-link = ["sdl2/static-link", "sdl2/bundled"]
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev.package.png]
+opt-level = "z"
+
+[profile.release.package.png]
+opt-level = "z"

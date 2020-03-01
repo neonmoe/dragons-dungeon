@@ -4,6 +4,7 @@
 - Saturday: ~~temp graphics, get entities on screen and fighting~~
   - Spent the day sleeping and otherwise AFK, starting sunday instead.
 - Sunday: temp graphics, get entities on screen and fighting
+  - Started: 11:00
 - Monday: little time, clean up / procrastination day
 - Tuesday: dungeon generation, should be playable at this point
 - Wednesday: content day, items & enemies
