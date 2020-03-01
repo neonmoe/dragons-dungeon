@@ -111,7 +111,7 @@ fn main() -> Result<(), fae::Error> {
         if let Some(last_frame_time) = last_frame_time {
             let duration: Duration = current_time - last_frame_time;
             let seconds = duration.as_secs_f32();
-            world.animate(seconds);
+            world.animate(seconds, 0.2);
         }
         last_frame_time = Some(current_time);
 

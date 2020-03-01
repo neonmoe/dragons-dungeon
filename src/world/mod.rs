@@ -116,10 +116,15 @@ impl World {
         }
     }
 
-    pub fn animate(&mut self, delta_seconds: f32) {
+    pub fn animate(&mut self, delta_seconds: f32, round_duration: f32) {
         let previous_round_entities = match &self.previous_round_entities {
             Some(entities) => entities,
             None => return,
+        };
+        let progress = if round_duration > 0.0 {
+            (self.animation_timer / round_duration).min(1.0)
+        } else {
+            1.0
         };
 
         if self.animation_timer == 0.0 {
@@ -144,8 +149,8 @@ impl World {
                 }
             };
             for animation in self.entities.iter_mut().map(|e| &mut e.animation) {
-                animation.x = clamped_lerp(animation.x, 0.0, delta_seconds * 20.0);
-                animation.y = clamped_lerp(animation.y, 0.0, delta_seconds * 20.0);
+                animation.x = clamped_lerp(animation.x, 0.0, progress);
+                animation.y = clamped_lerp(animation.y, 0.0, progress);
             }
         }
         self.animation_timer += delta_seconds;
