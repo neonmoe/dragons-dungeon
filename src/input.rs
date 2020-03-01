@@ -7,6 +7,7 @@ const KEYS_MOVE_UP: [Keycode; 3] = [Keycode::Up, Keycode::W, Keycode::K];
 const KEYS_MOVE_DOWN: [Keycode; 3] = [Keycode::Down, Keycode::S, Keycode::J];
 const KEYS_MOVE_LEFT: [Keycode; 3] = [Keycode::Left, Keycode::A, Keycode::H];
 const KEYS_MOVE_RIGHT: [Keycode; 3] = [Keycode::Right, Keycode::D, Keycode::L];
+const KEYS_WAIT: [Keycode; 2] = [Keycode::Space, Keycode::Period];
 
 pub fn is_key_move_up(keycode: Keycode) -> bool {
     KEYS_MOVE_UP.contains(&keycode)
@@ -22,4 +23,8 @@ pub fn is_key_move_left(keycode: Keycode) -> bool {
 
 pub fn is_key_move_right(keycode: Keycode) -> bool {
     KEYS_MOVE_RIGHT.contains(&keycode)
+}
+
+pub fn is_key_wait(keycode: Keycode) -> bool {
+    KEYS_WAIT.contains(&keycode)
 }

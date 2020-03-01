@@ -48,8 +48,6 @@ fn main() -> Result<(), fae::Error> {
         .build()
         .unwrap();
 
-    error::user_facing_error("test error", Some(&window));
-
     let gl_context = window.gl_create_context().unwrap();
     fae::gl::load_with(|name| sdl_video.gl_get_proc_address(name) as *const _);
 
@@ -96,6 +94,8 @@ fn main() -> Result<(), fae::Error> {
                             world.update(PlayerAction::MoveRight);
                         } else if input::is_key_move_left(keycode) {
                             world.update(PlayerAction::MoveLeft);
+                        } else if input::is_key_wait(keycode) {
+                            world.update(PlayerAction::Wait);
                         }
                     }
                 }

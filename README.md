@@ -3,10 +3,13 @@ Here you'll find an entry to the [2020 7DRL game jam][jam].
 
 ## Build instructions
 Main points to be aware of when building this game:
+
 - The game interacts with the OS via libc and SDL2. Everything else is
   written in Rust, and therefore statically linked.
+
 - Because of how Rust does things, libc will be dynamically
   linked. Might look into making this musl compatible in the future.
+
 - SDL2 can be linked either way, but I'm going dynamic by default,
   since sdl is almost a standard, and can usually be found via a
   package manager.
