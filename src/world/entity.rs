@@ -11,6 +11,7 @@ pub struct Entity {
     pub damage: Option<Damage>,
     pub inventory: Option<Inventory>,
     pub ai: Option<Ai>,
+    pub drop: Option<Item>,
 }
 
 impl Entity {

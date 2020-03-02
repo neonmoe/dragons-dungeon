@@ -36,8 +36,8 @@ pub const PROTO_PLAYER: Entity = Entity {
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
-        current: 24,
-        max: 24,
+        current: 16,
+        max: 16,
     }),
     damage: Some(Damage(4)),
     inventory: Some(Inventory {
@@ -45,6 +45,7 @@ pub const PROTO_PLAYER: Entity = Entity {
         item_right: None,
     }),
     ai: None,
+    drop: None,
 };
 
 pub const PROTO_WALL: Entity = Entity {
@@ -56,6 +57,7 @@ pub const PROTO_WALL: Entity = Entity {
     damage: None,
     inventory: None,
     ai: None,
+    drop: None,
 };
 
 pub const PROTO_SKELETON: Entity = Entity {
@@ -67,4 +69,55 @@ pub const PROTO_SKELETON: Entity = Entity {
     damage: Some(Damage(4)),
     inventory: None,
     ai: Some(Ai::Skeleton(SkeletonAi::new())),
+    drop: None,
 };
+
+const PROTO_ITEM: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::ITEM_SWORD),
+    animation: Animation::default(),
+    denies_movement: false,
+    health: None,
+    damage: None,
+    inventory: None,
+    ai: None,
+    drop: None,
+};
+
+pub const PROTO_ITEMS: [Entity; 7] = [
+    Entity {
+        sprite: Sprite(sprites::ITEM_SWORD),
+        drop: Some(Item::Sword),
+        ..PROTO_ITEM
+    },
+    Entity {
+        sprite: Sprite(sprites::ITEM_SCYTHE),
+        drop: Some(Item::Scythe),
+        ..PROTO_ITEM
+    },
+    Entity {
+        sprite: Sprite(sprites::ITEM_HAMMER),
+        drop: Some(Item::Hammer),
+        ..PROTO_ITEM
+    },
+    Entity {
+        sprite: Sprite(sprites::ITEM_DAGGER),
+        drop: Some(Item::Dagger),
+        ..PROTO_ITEM
+    },
+    Entity {
+        sprite: Sprite(sprites::ITEM_SHIELD),
+        drop: Some(Item::Shield),
+        ..PROTO_ITEM
+    },
+    Entity {
+        sprite: Sprite(sprites::ITEM_VAMPIRE_TEETH),
+        drop: Some(Item::VampireTeeth),
+        ..PROTO_ITEM
+    },
+    Entity {
+        sprite: Sprite(sprites::ITEM_STOPWATCH),
+        drop: Some(Item::Stopwatch),
+        ..PROTO_ITEM
+    },
+];

@@ -7,7 +7,8 @@
   - Started: 11:00
   - Graphics and entities done, fighting moved to monday.
 - Monday: little time, clean up / procrastination day
-  - Basic combat is done, not all items yet though.
+  - Basic combat is done, item bases have been added, most item
+    implementations and pickups are wip.
 - Tuesday: dungeon generation, should be playable at this point
 - Wednesday: content day, items & enemies
 - Thursday: polish / catchup

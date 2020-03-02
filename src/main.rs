@@ -58,7 +58,7 @@ fn main() -> Result<(), fae::Error> {
     let tileset = SpritesheetBuilder::default()
         .alpha_blending(true)
         .minification_smoothing(true)
-        .magnification_smoothing(true)
+        .magnification_smoothing(false)
         .image(tileset_image)
         .build(&mut fae_ctx);
     let ui_tileset = SpritesheetBuilder::default()

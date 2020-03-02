@@ -42,12 +42,17 @@ pub struct World {
 
 impl World {
     pub fn new() -> World {
+        let mut entities = Vec::new();
+        entities.push(PROTO_PLAYER.clone_at(0, 0));
+        entities.push(PROTO_WALL.clone_at(1, 2));
+        entities.push(PROTO_SKELETON.clone_at(5, 5));
+        let mut y = 3;
+        for item in PROTO_ITEMS.iter() {
+            entities.push(item.clone_at(4, y));
+            y += 1;
+        }
         World {
-            entities: vec![
-                PROTO_PLAYER.clone_at(0, 0),
-                PROTO_WALL.clone_at(1, 2),
-                PROTO_SKELETON.clone_at(5, 5),
-            ],
+            entities,
             previous_round_entities: None,
             animation_timer: 0.0,
         }
@@ -76,6 +81,10 @@ impl World {
     }
 
     fn update_player(&mut self, action: PlayerAction) {
+        if !self.entities[0].is_alive() {
+            return;
+        }
+
         let mut move_direction = None;
         match action {
             PlayerAction::MoveUp => move_direction = Some((0, -1)),
@@ -201,7 +210,7 @@ impl World {
                     tile_size,
                     tile_size,
                 ))
-                .texture_coordinates(sprite.0[0])
+                .texture_coordinates(sprite.0)
                 .color((1.0, 1.0, 1.0, animation.opacity.current))
                 .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
                 .z(if is_alive { 0.1 } else { 0.0 })
@@ -224,8 +233,9 @@ impl World {
             );
             let dark = (0.2, 0.5, 0.8, 0.8 * animation.opacity.current);
             let light = (0.9, 0.1, 0.0, 1.0 * animation.opacity.current);
-            draw_hearts(ctx, tileset, pos, tile_size, dark, health.max);
-            draw_hearts(ctx, tileset, pos, tile_size, light, health.current);
+            let (current, max) = (health.current, health.max);
+            draw_hearts(ctx, tileset, pos, tile_size, dark, max, max);
+            draw_hearts(ctx, tileset, pos, tile_size, light, current, max);
         }
     }
 
@@ -299,21 +309,22 @@ fn draw_hearts(
     tile_size: f32,
     tint: (f32, f32, f32, f32),
     heart_quarters: i32,
+    heart_quarters_max: i32,
 ) {
     let hearts_total = (heart_quarters as f32 / 4.0).ceil() as i32;
-    let rows = (hearts_total as f32 / 3.0).ceil() as i32;
+    let rows = ((heart_quarters_max as f32 / 4.0).ceil() / 2.0).ceil() as i32;
     for i in 0..hearts_total {
         let coords = (
-            x + tile_size / 4.0 * (i % 3) as f32 + tile_size / 8.0,
-            y - tile_size / 4.0 * rows as f32 + tile_size / 4.0 * (i / 3) as f32,
-            tile_size / 4.0,
-            tile_size / 4.0,
+            x + tile_size / 2.0 * (i % 2) as f32,
+            y - tile_size / 2.0 * rows as f32 + tile_size / 2.0 * (i / 2) as f32,
+            tile_size / 2.0,
+            tile_size / 2.0,
         );
         let quarters = (4 - (heart_quarters - i * 4)).max(0) as usize;
         tileset
             .draw(ctx)
             .coordinates(coords)
-            .texture_coordinates(sprites::ICONS_HEART[quarters][0])
+            .texture_coordinates(sprites::ICONS_HEART[quarters])
             .z(0.1)
             .color(tint)
             .finish();
