@@ -26,7 +26,7 @@ pub struct SkeletonAi {
 }
 
 impl SkeletonAi {
-    pub fn new() -> SkeletonAi {
+    pub const fn new() -> SkeletonAi {
         SkeletonAi { step: 0 }
     }
 

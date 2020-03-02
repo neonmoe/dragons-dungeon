@@ -1,9 +1,11 @@
 mod ai;
+mod entities;
 mod entity;
 
 use crate::sprites;
-use ai::{Ai, SkeletonAi};
-use entity::{Animation, Entity, Health, Position, Sprite};
+use ai::Ai;
+use entities::*;
+use entity::{AnimationState, Damage, Entity, Health, Inventory, Item, Position};
 
 use fae::{Font, GraphicsContext, Spritesheet};
 
@@ -13,7 +15,7 @@ use fae::{Font, GraphicsContext, Spritesheet};
 ///
 /// Created internally by World::split_entities.
 pub type EntityIter<'a> =
-    std::iter::Chain<std::slice::Iter<'a, Entity>, std::slice::Iter<'a, Entity>>;
+    std::iter::Chain<std::slice::IterMut<'a, Entity>, std::slice::IterMut<'a, Entity>>;
 
 #[derive(Debug, Clone)]
 pub enum PlayerAction {
@@ -42,39 +44,9 @@ impl World {
     pub fn new() -> World {
         World {
             entities: vec![
-                Entity {
-                    position: Position { x: 0, y: 0 },
-                    sprite: Sprite {
-                        data: sprites::PLAYER,
-                    },
-                    animation: Animation { x: 0.0, y: 0.0 },
-                    denies_movement: true,
-                    health: Some(Health {
-                        current: 24,
-                        max: 24,
-                    }),
-                    ai: None,
-                },
-                Entity {
-                    position: Position { x: 1, y: 2 },
-                    sprite: Sprite {
-                        data: sprites::WALL,
-                    },
-                    animation: Animation { x: 0.0, y: 0.0 },
-                    denies_movement: true,
-                    health: None,
-                    ai: None,
-                },
-                Entity {
-                    position: Position { x: 5, y: 5 },
-                    sprite: Sprite {
-                        data: sprites::SKELETON,
-                    },
-                    animation: Animation { x: 0.0, y: 0.0 },
-                    denies_movement: true,
-                    health: Some(Health { current: 8, max: 8 }),
-                    ai: Some(Ai::Skeleton(SkeletonAi::new())),
-                },
+                PROTO_PLAYER.clone_at(0, 0),
+                PROTO_WALL.clone_at(1, 2),
+                PROTO_SKELETON.clone_at(5, 5),
             ],
             previous_round_entities: None,
             animation_timer: 0.0,
@@ -93,16 +65,17 @@ impl World {
         // Update the rest of the entities, in order
         for i in 1..self.entities.len() {
             let (entity, others) = self.split_entities(i);
-            if let Some(ai) = &mut entity.ai {
-                match ai {
-                    Ai::Skeleton(ai) => ai.update(&mut entity.position, others),
+            if entity.is_alive() {
+                if let Some(ai) = &mut entity.ai {
+                    match ai {
+                        Ai::Skeleton(ai) => ai.update(&mut entity.position, others),
+                    }
                 }
             }
         }
     }
 
     fn update_player(&mut self, action: PlayerAction) {
-        let (player, others) = self.split_entities(0);
         let mut move_direction = None;
         match action {
             PlayerAction::MoveUp => move_direction = Some((0, -1)),
@@ -112,7 +85,21 @@ impl World {
             PlayerAction::Wait => {}
         };
         if let Some((xd, yd)) = move_direction {
-            move_entity(&mut player.position, others, xd, yd);
+            let (player, others) = self.split_entities(0);
+            let moved = move_entity(&mut player.position, others, xd, yd);
+
+            if !moved {
+                let (player, others) = self.split_entities(0);
+                attack_direction(
+                    &player.position,
+                    player.damage.as_ref().unwrap(),
+                    player.health.as_mut().unwrap(),
+                    player.inventory.as_ref().unwrap(),
+                    others,
+                    xd,
+                    yd,
+                )
+            }
         }
     }
 
@@ -139,22 +126,51 @@ impl World {
                     current.position.x - previous.position.x,
                     current.position.y - previous.position.y,
                 );
-                current.animation.x -= xd as f32;
-                current.animation.y -= yd as f32;
-            }
-        } else {
-            let clamped_lerp = |a: f32, b: f32, x: f32| {
-                if a > b {
-                    (a + (b - a) * x).max(b)
+                current.animation.x.from = current.animation.x.current - xd as f32;
+                current.animation.y.from = current.animation.y.current - yd as f32;
+
+                let alive_opacity = 1.0;
+                let alive_rotation = 0.0;
+                let dead_opacity = 0.4;
+                let dead_rotation = std::f32::consts::PI * 0.4;
+                if current.is_alive() {
+                    current.animation.opacity.from = alive_opacity;
+                    current.animation.opacity.to = alive_opacity;
+                    current.animation.rotation.from = alive_rotation;
+                    current.animation.rotation.to = alive_rotation;
+                    if !previous.is_alive() {
+                        // Just revived!
+                        current.animation.opacity.from = dead_opacity;
+                        current.animation.rotation.from = dead_rotation;
+                    }
                 } else {
-                    (a + (b - a) * x).min(b)
+                    current.animation.opacity.from = dead_opacity;
+                    current.animation.opacity.to = dead_opacity;
+                    current.animation.rotation.from = dead_rotation;
+                    current.animation.rotation.to = dead_rotation;
+                    if previous.is_alive() {
+                        // Just died!
+                        current.animation.opacity.from = alive_opacity;
+                        current.animation.rotation.from = alive_rotation;
+                    }
                 }
-            };
-            for animation in self.entities.iter_mut().map(|e| &mut e.animation) {
-                animation.x = clamped_lerp(animation.x, 0.0, progress);
-                animation.y = clamped_lerp(animation.y, 0.0, progress);
             }
         }
+
+        let clamped_lerp = |animation: &mut AnimationState<f32>, x: f32| {
+            animation.current = if animation.from > animation.to {
+                (animation.from + (animation.to - animation.from) * x).max(animation.to)
+            } else {
+                (animation.from + (animation.to - animation.from) * x).min(animation.to)
+            };
+        };
+        for animation in self.entities.iter_mut().map(|e| &mut e.animation) {
+            clamped_lerp(&mut animation.x, progress);
+            clamped_lerp(&mut animation.y, progress);
+            clamped_lerp(&mut animation.rotation, progress);
+            clamped_lerp(&mut animation.opacity, progress);
+        }
+
         self.animation_timer += delta_seconds;
     }
 
@@ -164,42 +180,50 @@ impl World {
         let drawable_height = ctx.height;
         let offset = {
             let player = &self.entities[0];
-            let focus_x = player.position.x as f32 + player.animation.x + 0.5;
-            let focus_y = player.position.y as f32 + player.animation.y + 0.5;
+            let focus_x = player.position.x as f32 + player.animation.x.current + 0.5;
+            let focus_y = player.position.y as f32 + player.animation.y.current + 0.5;
             (
                 drawable_width / 2.0 - focus_x * tile_size,
                 drawable_height / 2.0 - focus_y * tile_size,
             )
         };
-        for (position, sprite, animation) in self
+
+        for (position, sprite, animation, is_alive) in self
             .entities
             .iter()
-            .map(|e| (&e.position, &e.sprite, &e.animation))
+            .map(|e| (&e.position, &e.sprite, &e.animation, e.is_alive()))
         {
             tileset
                 .draw(ctx)
                 .coordinates((
-                    (position.x as f32 + animation.x) * tile_size + offset.0,
-                    (position.y as f32 + animation.y) * tile_size + offset.1,
+                    (position.x as f32 + animation.x.current) * tile_size + offset.0,
+                    (position.y as f32 + animation.y.current) * tile_size + offset.1,
                     tile_size,
                     tile_size,
                 ))
-                .texture_coordinates(sprite.data[0])
-                .z(0.0)
+                .texture_coordinates(sprite.0[0])
+                .color((1.0, 1.0, 1.0, animation.opacity.current))
+                .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
+                .z(if is_alive { 0.1 } else { 0.0 })
                 .finish();
         }
 
-        for (position, animation, health) in self.entities.iter().filter_map(|e| {
-            e.health
-                .as_ref()
-                .map(|health| (&e.position, &e.animation, health))
-        }) {
+        for (position, animation, health) in self
+            .entities
+            .iter()
+            .filter(|e| e.is_alive())
+            .filter_map(|e| {
+                e.health
+                    .as_ref()
+                    .map(|health| (&e.position, &e.animation, health))
+            })
+        {
             let pos = (
-                (position.x as f32 + animation.x) * tile_size + offset.0,
-                (position.y as f32 + animation.y) * tile_size + offset.1,
+                (position.x as f32 + animation.x.current) * tile_size + offset.0,
+                (position.y as f32 + animation.y.current) * tile_size + offset.1,
             );
-            let dark = (0.2, 0.5, 0.8, 0.8);
-            let light = (0.9, 0.1, 0.0, 1.0);
+            let dark = (0.2, 0.5, 0.8, 0.8 * animation.opacity.current);
+            let light = (0.9, 0.1, 0.0, 1.0 * animation.opacity.current);
             draw_hearts(ctx, tileset, pos, tile_size, dark, health.max);
             draw_hearts(ctx, tileset, pos, tile_size, light, health.current);
         }
@@ -208,13 +232,13 @@ impl World {
     fn split_entities(&mut self, separated_index: usize) -> (&mut Entity, EntityIter) {
         let (head, tail) = self.entities.split_at_mut(separated_index);
         let (separated, tail) = tail.split_at_mut(1);
-        (&mut separated[0], head.iter().chain(tail.iter()))
+        (&mut separated[0], head.iter_mut().chain(tail.iter_mut()))
     }
 }
 
 fn move_entity(position: &mut Position, others: EntityIter, xd: i32, yd: i32) -> bool {
     let (new_x, new_y) = (position.x + xd, position.y + yd);
-    for other in others.filter(|e| e.denies_movement) {
+    for other in others.filter(|e| e.denies_movement && e.is_alive()) {
         if new_x == other.position.x && new_y == other.position.y {
             return false;
         }
@@ -222,6 +246,50 @@ fn move_entity(position: &mut Position, others: EntityIter, xd: i32, yd: i32) ->
     position.x = new_x;
     position.y = new_y;
     true
+}
+
+fn attack_direction(
+    position: &Position,
+    damage: &Damage,
+    health: &mut Health,
+    inventory: &Inventory,
+    others: EntityIter,
+    xd: i32,
+    yd: i32,
+) {
+    let (target_x, target_y) = (position.x + xd, position.y + yd);
+    let base_damage = calculate_outgoing_damage(damage, inventory);
+    let mut damage_dealt = 0;
+    for target in others
+        .filter(|e| e.position.x == target_x && e.position.y == target_y && e.health.is_some())
+    {
+        let damage_taken = calculate_incoming_damage(base_damage, &target.inventory);
+        if let Some(ref mut health) = target.health {
+            let previous_health = health.current;
+            health.current = (health.current - damage_taken).max(0);
+            damage_dealt += previous_health - health.current;
+        }
+    }
+    if inventory.has_item(Item::VampireTeeth) {
+        health.current = (health.current + damage_dealt).min(health.max);
+    }
+}
+
+fn calculate_outgoing_damage(damage: &Damage, inventory: &Inventory) -> i32 {
+    if inventory.has_item(Item::Sword) {
+        damage.0 * 2
+    } else {
+        damage.0
+    }
+}
+
+fn calculate_incoming_damage(mut base_damage: i32, defender_inventory: &Option<Inventory>) -> i32 {
+    if let Some(inv) = defender_inventory {
+        if inv.has_item(Item::Shield) && base_damage > 1 {
+            base_damage /= 2;
+        }
+    }
+    base_damage
 }
 
 fn draw_hearts(

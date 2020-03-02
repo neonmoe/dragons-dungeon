@@ -5,7 +5,9 @@
   - Spent the day sleeping and otherwise AFK, starting sunday instead.
 - Sunday: temp graphics, get entities on screen and fighting
   - Started: 11:00
+  - Graphics and entities done, fighting moved to monday.
 - Monday: little time, clean up / procrastination day
+  - Basic combat is done, not all items yet though.
 - Tuesday: dungeon generation, should be playable at this point
 - Wednesday: content day, items & enemies
 - Thursday: polish / catchup
