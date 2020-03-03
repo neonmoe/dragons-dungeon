@@ -10,6 +10,7 @@
   - Basic combat is done, item bases have been added, most item
     implementations and pickups are wip.
 - Tuesday: dungeon generation, should be playable at this point
+  - Drew sprites because inspiration struck.
 - Wednesday: content day, items & enemies
 - Thursday: polish / catchup
 - Friday: _polish_ / catchup

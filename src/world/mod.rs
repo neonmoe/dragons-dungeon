@@ -44,13 +44,23 @@ impl World {
     pub fn new() -> World {
         let mut entities = Vec::new();
         entities.push(PROTO_PLAYER.clone_at(0, 0));
-        entities.push(PROTO_WALL.clone_at(1, 2));
+
+        entities.push(PROTO_WALL.clone_at(0, 2));
+        entities.push(PROTO_DOOR.clone_at(1, 2));
+        entities.push(PROTO_WALL.clone_at(2, 2));
+
         entities.push(PROTO_SKELETON.clone_at(5, 5));
+        entities.push(PROTO_COBWEB.clone_at(3, 4));
+        entities.push(PROTO_ZOMBIE.clone_at(0, 4));
+        entities.push(PROTO_DRAGON.clone_at(2, 7));
+
+        entities.push(PROTO_APPLE.clone_at(4, 1));
         let mut y = 3;
         for item in PROTO_ITEMS.iter() {
             entities.push(item.clone_at(4, y));
             y += 1;
         }
+
         World {
             entities,
             previous_round_entities: None,
@@ -184,7 +194,7 @@ impl World {
     }
 
     pub fn render(&self, ctx: &mut GraphicsContext, _font: &Font, tileset: &Spritesheet) {
-        let tile_size = 32.0;
+        let tile_size = 48.0;
         let drawable_width = ctx.width - crate::ui::UI_AREA_WIDTH;
         let drawable_height = ctx.height;
         let offset = {
@@ -312,11 +322,11 @@ fn draw_hearts(
     heart_quarters_max: i32,
 ) {
     let hearts_total = (heart_quarters as f32 / 4.0).ceil() as i32;
-    let rows = ((heart_quarters_max as f32 / 4.0).ceil() / 2.0).ceil() as i32;
+    let rows = ((heart_quarters_max as f32 / 4.0).ceil() / 3.0).ceil() as i32;
     for i in 0..hearts_total {
         let coords = (
-            x + tile_size / 2.0 * (i % 2) as f32,
-            y - tile_size / 2.0 * rows as f32 + tile_size / 2.0 * (i / 2) as f32,
+            x + tile_size / 2.0 * (i % 3) as f32 - tile_size / 4.0,
+            y - tile_size / 2.0 * rows as f32 + tile_size / 2.0 * (i / 3) as f32,
             tile_size / 2.0,
             tile_size / 2.0,
         );

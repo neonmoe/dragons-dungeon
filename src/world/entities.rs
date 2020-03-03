@@ -36,8 +36,8 @@ pub const PROTO_PLAYER: Entity = Entity {
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
-        current: 16,
-        max: 16,
+        current: 12,
+        max: 12,
     }),
     damage: Some(Damage(4)),
     inventory: Some(Inventory {
@@ -69,6 +69,72 @@ pub const PROTO_SKELETON: Entity = Entity {
     damage: Some(Damage(4)),
     inventory: None,
     ai: Some(Ai::Skeleton(SkeletonAi::new())),
+    drop: None,
+};
+
+pub const PROTO_COBWEB: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::COBWEB),
+    animation: Animation::default(),
+    denies_movement: false,
+    health: None,
+    damage: None,
+    inventory: None,
+    ai: None,
+    drop: None,
+};
+
+pub const PROTO_ZOMBIE: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::ZOMBIE),
+    animation: Animation::default(),
+    denies_movement: false,
+    health: Some(Health {
+        current: 12,
+        max: 12,
+    }),
+    damage: Some(Damage(3)),
+    inventory: None,
+    ai: None,
+    drop: None,
+};
+
+pub const PROTO_DRAGON: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::DRAGON),
+    animation: Animation::default(),
+    denies_movement: false,
+    health: Some(Health {
+        current: 24,
+        max: 24,
+    }),
+    damage: None,
+    inventory: None,
+    ai: None,
+    drop: None,
+};
+
+pub const PROTO_APPLE: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::APPLE),
+    animation: Animation::default(),
+    denies_movement: false,
+    health: None,
+    damage: None,
+    inventory: None,
+    ai: None,
+    drop: None,
+};
+
+pub const PROTO_DOOR: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::DOOR),
+    animation: Animation::default(),
+    denies_movement: true,
+    health: None,
+    damage: None,
+    inventory: None,
+    ai: None,
     drop: None,
 };
 

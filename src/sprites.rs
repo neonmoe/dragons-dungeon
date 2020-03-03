@@ -3,6 +3,11 @@ pub type SpriteData = (i32, i32, i32, i32);
 pub const PLAYER: SpriteData = (0, 0, 16, 16);
 pub const WALL: SpriteData = (0, 16, 16, 16);
 pub const SKELETON: SpriteData = (0, 48, 16, 16);
+pub const COBWEB: SpriteData = (0, 176, 16, 16);
+pub const ZOMBIE: SpriteData = (0, 192, 16, 16);
+pub const DRAGON: SpriteData = (0, 208, 16, 16);
+pub const APPLE: SpriteData = (0, 224, 16, 16);
+pub const DOOR: SpriteData = (0, 240, 16, 16);
 pub const ICONS_HEART: [SpriteData; 4] =
     [(0, 32, 8, 8), (8, 32, 8, 8), (0, 40, 8, 8), (8, 40, 8, 8)];
 pub const ITEM_SWORD: SpriteData = (0, 64, 16, 16);

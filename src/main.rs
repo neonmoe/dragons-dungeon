@@ -122,7 +122,7 @@ fn main() -> Result<(), fae::Error> {
         ui.render(&mut ctx, &font, &ui_tileset);
 
         ctx.finish_frame();
-        fae_ctx.render(width, height, (0.1, 0.1, 0.1, 0.5));
+        fae_ctx.render(width, height, (0.1, 0.1, 0.1, 1.0));
         window.gl_swap_window();
         fae_ctx.synchronize();
     }

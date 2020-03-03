@@ -13,11 +13,16 @@ log = { version = "0.4.8" }
 default = []
 static-link = ["sdl2/static-link", "sdl2/bundled"]
 
-[profile.dev.package."*"]
+# Optimize relatively hot packages in debug as well
+[profile.dev.package.fae]
 opt-level = 2
-
-[profile.dev.package.png]
-opt-level = "z"
-
-[profile.release.package.png]
-opt-level = "z"
+[profile.dev.package.fnv]
+opt-level = 2
+[profile.dev.package.regex]
+opt-level = 2
+[profile.dev.package.rusttype]
+opt-level = 2
+[profile.dev.package.sdl2]
+opt-level = 2
+[profile.dev.package.stb_truetype]
+opt-level = 2
