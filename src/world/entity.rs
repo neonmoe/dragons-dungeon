@@ -8,6 +8,7 @@ pub struct Entity {
     pub animation: Animation,
     pub denies_movement: bool,
     pub health: Option<Health>,
+    pub status_effects: Option<Vec<StatusEffect>>,
     pub damage: Option<Damage>,
     pub inventory: Option<Inventory>,
     pub ai: Option<Ai>,
@@ -58,6 +59,12 @@ pub struct AnimationState<T> {
 pub struct Health {
     pub current: i32,
     pub max: i32,
+}
+
+#[derive(Debug, Clone)]
+pub enum StatusEffect {
+    Stun,
+    Poison(i32),
 }
 
 #[derive(Debug, Clone)]
