@@ -2,7 +2,7 @@ mod ai;
 mod entities;
 mod entity;
 
-use crate::sprites;
+use crate::{layers, sprites};
 use ai::Ai;
 use entities::*;
 use entity::{AnimationState, Damage, Entity, Health, Inventory, Item, Position};
@@ -113,7 +113,7 @@ impl World {
                     &player.position,
                     player.damage.as_ref().unwrap(),
                     player.health.as_mut().unwrap(),
-                    player.inventory.as_ref().unwrap(),
+                    &player.inventory,
                     others,
                     xd,
                     yd,
@@ -223,7 +223,11 @@ impl World {
                 .texture_coordinates(sprite.0)
                 .color((1.0, 1.0, 1.0, animation.opacity.current))
                 .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
-                .z(if is_alive { 0.1 } else { 0.0 })
+                .z(if is_alive {
+                    layers::ALIVE
+                } else {
+                    layers::DEAD
+                })
                 .finish();
         }
 
@@ -272,44 +276,55 @@ fn attack_direction(
     position: &Position,
     damage: &Damage,
     health: &mut Health,
-    inventory: &Inventory,
+    inventory: &Option<Inventory>,
     others: EntityIter,
     xd: i32,
     yd: i32,
 ) {
     let (target_x, target_y) = (position.x + xd, position.y + yd);
-    let base_damage = calculate_outgoing_damage(damage, inventory);
     let mut damage_dealt = 0;
     for target in others
         .filter(|e| e.position.x == target_x && e.position.y == target_y && e.health.is_some())
     {
-        let damage_taken = calculate_incoming_damage(base_damage, &target.inventory);
-        if let Some(ref mut health) = target.health {
-            let previous_health = health.current;
-            health.current = (health.current - damage_taken).max(0);
-            damage_dealt += previous_health - health.current;
+        if let Some(ref mut target_health) = target.health {
+            let damage_taken =
+                calculate_damage(damage, inventory, target_health, &target.inventory);
+            let previous_target_health = target_health.current;
+            target_health.current = (target_health.current - damage_taken).max(0);
+            damage_dealt += previous_target_health - target_health.current;
         }
     }
-    if inventory.has_item(Item::VampireTeeth) {
+    if inventory.iter().any(|inv| inv.has_item(Item::VampireTeeth)) {
         health.current = (health.current + damage_dealt).min(health.max);
     }
 }
 
-fn calculate_outgoing_damage(damage: &Damage, inventory: &Inventory) -> i32 {
-    if inventory.has_item(Item::Sword) {
-        damage.0 * 2
-    } else {
-        damage.0
-    }
-}
+fn calculate_damage(
+    attacker_damage: &Damage,
+    attacker_inventory: &Option<Inventory>,
+    defender_health: &Health,
+    defender_inventory: &Option<Inventory>,
+) -> i32 {
+    let mut damage = attacker_damage.0;
 
-fn calculate_incoming_damage(mut base_damage: i32, defender_inventory: &Option<Inventory>) -> i32 {
-    if let Some(inv) = defender_inventory {
-        if inv.has_item(Item::Shield) && base_damage > 1 {
-            base_damage /= 2;
+    // Apply attacker bonuses
+    if let Some(inv) = attacker_inventory {
+        if inv.has_item(Item::Sword) {
+            damage *= 2;
+        }
+        if inv.has_item(Item::Scythe) && defender_health.current <= defender_health.max / 2 {
+            damage = defender_health.current;
         }
     }
-    base_damage
+
+    // Apply defender bonuses
+    if let Some(inv) = defender_inventory {
+        if inv.has_item(Item::Shield) && damage > 1 {
+            damage /= 2;
+        }
+    }
+
+    damage
 }
 
 fn draw_hearts(
@@ -335,7 +350,7 @@ fn draw_hearts(
             .draw(ctx)
             .coordinates(coords)
             .texture_coordinates(sprites::ICONS_HEART[quarters])
-            .z(0.1)
+            .z(layers::HEARTS)
             .color(tint)
             .finish();
     }

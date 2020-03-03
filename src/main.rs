@@ -2,10 +2,12 @@
 
 use fae::{Context, Font, GraphicsContext, Image, SpritesheetBuilder};
 use sdl2::event::{Event, WindowEvent};
+use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 mod error;
 mod input;
+mod layers;
 mod sprites;
 mod ui;
 mod world;
@@ -52,8 +54,10 @@ fn main() -> Result<(), fae::Error> {
     fae::gl::load_with(|name| sdl_video.gl_get_proc_address(name) as *const _);
 
     let mut fae_ctx: Context = Context::new();
-    let ttf = include_bytes!("../fonts/libre-baskerville/libre-baskerville.ttf").to_vec();
-    let font = Font::with_ttf(&mut fae_ctx, ttf).unwrap();
+    let ttf_plain = include_bytes!("../fonts/world-of-fonts/magic-forest.ttf").to_vec();
+    let ttf_title = include_bytes!("../fonts/world-of-fonts/wizard's-manse.otf").to_vec();
+    let font = Font::with_ttf(&mut fae_ctx, ttf_plain).unwrap();
+    let title_font = Font::with_ttf(&mut fae_ctx, ttf_title).unwrap();
     let tileset_image = Image::with_png(include_bytes!("tileset.png"))?;
     let tileset = SpritesheetBuilder::default()
         .alpha_blending(true)
@@ -70,6 +74,7 @@ fn main() -> Result<(), fae::Error> {
 
     let mut event_pump = sdl.event_pump().unwrap();
     let mut last_frame_time = None;
+    let mut action_queue: VecDeque<PlayerAction> = VecDeque::new();
 
     'game_loop: loop {
         for event in event_pump.poll_iter() {
@@ -87,20 +92,25 @@ fn main() -> Result<(), fae::Error> {
                 Event::KeyDown { keycode, .. } => {
                     if let Some(keycode) = keycode {
                         if input::is_key_move_up(keycode) {
-                            world.update(PlayerAction::MoveUp);
+                            action_queue.push_back(PlayerAction::MoveUp);
                         } else if input::is_key_move_down(keycode) {
-                            world.update(PlayerAction::MoveDown);
+                            action_queue.push_back(PlayerAction::MoveDown);
                         } else if input::is_key_move_right(keycode) {
-                            world.update(PlayerAction::MoveRight);
+                            action_queue.push_back(PlayerAction::MoveRight);
                         } else if input::is_key_move_left(keycode) {
-                            world.update(PlayerAction::MoveLeft);
+                            action_queue.push_back(PlayerAction::MoveLeft);
                         } else if input::is_key_wait(keycode) {
-                            world.update(PlayerAction::Wait);
+                            action_queue.push_back(PlayerAction::Wait);
                         }
                     }
                 }
                 _ => {}
             }
+        }
+
+        // One action per frame:
+        if let Some(action) = action_queue.pop_front() {
+            world.update(action);
         }
 
         let (width, height) = (window.size().0 as f32, window.size().1 as f32);
@@ -120,6 +130,11 @@ fn main() -> Result<(), fae::Error> {
 
         world.render(&mut ctx, &font, &tileset);
         ui.render(&mut ctx, &font, &ui_tileset);
+        title_font
+            .draw(&mut ctx, "7DRL entry by neonmoe", 16.0, -4.0, 32.0)
+            .color((1.0, 1.0, 1.0, 1.0))
+            .z(0.9)
+            .finish();
 
         ctx.finish_frame();
         fae_ctx.render(width, height, (0.1, 0.1, 0.1, 1.0));
