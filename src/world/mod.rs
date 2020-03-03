@@ -5,7 +5,9 @@ mod entity;
 use crate::{layers, sprites};
 use ai::Ai;
 use entities::*;
-use entity::{AnimationState, Damage, Entity, Health, Inventory, Item, Position};
+use entity::{
+    Animation, AnimationState, Damage, Entity, Health, Inventory, Item, Position, Sprite,
+};
 
 use fae::{Font, GraphicsContext, Spritesheet};
 
@@ -207,30 +209,41 @@ impl World {
             )
         };
 
-        for (position, sprite, animation, is_alive) in self
+        let mut draw_entity =
+            |position: &Position, sprite: &Sprite, animation: &Animation, z: f32| {
+                let x = (position.x as f32 + animation.x.current) * tile_size + offset.0;
+                let y = (position.y as f32 + animation.y.current) * tile_size + offset.1;
+                tileset
+                    .draw(ctx)
+                    .coordinates((x, y, tile_size, tile_size))
+                    .texture_coordinates(sprite.0)
+                    .color((1.0, 1.0, 1.0, animation.opacity.current))
+                    .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
+                    .z(z)
+                    .finish();
+            };
+
+        // Draw the dead
+        for (position, sprite, animation) in self
             .entities
             .iter()
-            .map(|e| (&e.position, &e.sprite, &e.animation, e.is_alive()))
+            .filter(|e| !e.is_alive())
+            .map(|e| (&e.position, &e.sprite, &e.animation))
         {
-            tileset
-                .draw(ctx)
-                .coordinates((
-                    (position.x as f32 + animation.x.current) * tile_size + offset.0,
-                    (position.y as f32 + animation.y.current) * tile_size + offset.1,
-                    tile_size,
-                    tile_size,
-                ))
-                .texture_coordinates(sprite.0)
-                .color((1.0, 1.0, 1.0, animation.opacity.current))
-                .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
-                .z(if is_alive {
-                    layers::ALIVE
-                } else {
-                    layers::DEAD
-                })
-                .finish();
+            draw_entity(position, sprite, animation, layers::DEAD);
         }
 
+        // Draw the alive (so they get drawn after the dead
+        for (position, sprite, animation) in self
+            .entities
+            .iter()
+            .filter(|e| e.is_alive())
+            .map(|e| (&e.position, &e.sprite, &e.animation))
+        {
+            draw_entity(position, sprite, animation, layers::ALIVE);
+        }
+
+        // Draw hearts
         for (position, animation, health) in self
             .entities
             .iter()
