@@ -5,11 +5,11 @@ mod entity;
 use crate::{layers, sprites};
 use ai::Ai;
 use entities::*;
-use entity::{
-    Animation, AnimationState, Damage, Entity, Health, Inventory, Item, Position, Sprite,
-};
+use entity::{Animation, AnimationState, Damage, Entity, Health, Inventory, Position, Sprite};
 
 use fae::{Font, GraphicsContext, Spritesheet};
+
+pub use entity::Item;
 
 /// Represents an iterator over all entities except for one. Used when
 /// running updates for a that one entity, if it needs to interact
@@ -25,6 +25,7 @@ pub enum PlayerAction {
     MoveDown,
     MoveRight,
     MoveLeft,
+    Pickup,
     Wait,
 }
 
@@ -92,6 +93,15 @@ impl World {
         }
     }
 
+    pub fn player(&self) -> &Entity {
+        &self.entities[0]
+    }
+
+    /// Excluding the player, get the player with World::player.
+    pub fn entities(&self) -> &[Entity] {
+        &self.entities[1..]
+    }
+
     fn update_player(&mut self, action: PlayerAction) {
         if !self.entities[0].is_alive() {
             return;
@@ -103,6 +113,10 @@ impl World {
             PlayerAction::MoveDown => move_direction = Some((0, 1)),
             PlayerAction::MoveRight => move_direction = Some((1, 0)),
             PlayerAction::MoveLeft => move_direction = Some((-1, 0)),
+            PlayerAction::Pickup => {
+                let (player, others) = self.split_entities(0);
+                pickup(&player.position, player.inventory.as_mut().unwrap(), others);
+            }
             PlayerAction::Wait => {}
         };
         if let Some((xd, yd)) = move_direction {
@@ -227,7 +241,7 @@ impl World {
         for (position, sprite, animation) in self
             .entities
             .iter()
-            .filter(|e| !e.is_alive())
+            .filter(|e| !e.is_alive() && e.visible)
             .map(|e| (&e.position, &e.sprite, &e.animation))
         {
             draw_entity(position, sprite, animation, layers::DEAD);
@@ -237,7 +251,7 @@ impl World {
         for (position, sprite, animation) in self
             .entities
             .iter()
-            .filter(|e| e.is_alive())
+            .filter(|e| e.is_alive() && e.visible)
             .map(|e| (&e.position, &e.sprite, &e.animation))
         {
             draw_entity(position, sprite, animation, layers::ALIVE);
@@ -247,7 +261,7 @@ impl World {
         for (position, animation, health) in self
             .entities
             .iter()
-            .filter(|e| e.is_alive())
+            .filter(|e| e.is_alive() && e.visible)
             .filter_map(|e| {
                 e.health
                     .as_ref()
@@ -270,6 +284,23 @@ impl World {
         let (head, tail) = self.entities.split_at_mut(separated_index);
         let (separated, tail) = tail.split_at_mut(1);
         (&mut separated[0], head.iter_mut().chain(tail.iter_mut()))
+    }
+}
+
+fn pickup(position: &Position, inventory: &mut Inventory, others: EntityIter) {
+    if let Some(pickup) = others
+        .filter(|e| e.position == *position && e.drop.is_some())
+        .nth(0)
+    {
+        if let Some(item) = pickup.drop {
+            if let Some(replacing_item) = inventory.add_item(item) {
+                pickup.drop = Some(replacing_item);
+                pickup.sprite = replacing_item.sprite();
+            } else {
+                pickup.drop = None;
+                pickup.visible = false;
+            }
+        }
     }
 }
 

@@ -43,7 +43,7 @@ fn main() -> Result<(), fae::Error> {
     };
 
     let window = sdl_video
-        .window(TITLE, 640, 480)
+        .window(TITLE, 800, 600)
         .opengl()
         .allow_highdpi()
         .resizable()
@@ -99,6 +99,8 @@ fn main() -> Result<(), fae::Error> {
                             action_queue.push_back(PlayerAction::MoveRight);
                         } else if input::is_key_move_left(keycode) {
                             action_queue.push_back(PlayerAction::MoveLeft);
+                        } else if input::is_key_pickup(keycode) {
+                            action_queue.push_back(PlayerAction::Pickup);
                         } else if input::is_key_wait(keycode) {
                             action_queue.push_back(PlayerAction::Wait);
                         }
@@ -129,7 +131,7 @@ fn main() -> Result<(), fae::Error> {
         let mut ctx: GraphicsContext = fae_ctx.start_frame(width, height, dpi_factor);
 
         world.render(&mut ctx, &font, &tileset);
-        ui.render(&mut ctx, &font, &ui_tileset);
+        ui.render(&mut ctx, &font, &ui_tileset, &world);
         title_font
             .draw(&mut ctx, "7DRL entry by neonmoe", 16.0, -4.0, 32.0)
             .color((1.0, 1.0, 1.0, 1.0))

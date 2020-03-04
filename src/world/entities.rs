@@ -33,6 +33,7 @@ impl Animation {
 pub const PROTO_PLAYER: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::PLAYER),
+    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -41,10 +42,7 @@ pub const PROTO_PLAYER: Entity = Entity {
     }),
     status_effects: Some(Vec::new()),
     damage: Some(Damage(4)),
-    inventory: Some(Inventory {
-        item_left: None,
-        item_right: None,
-    }),
+    inventory: Some(Inventory::new()),
     ai: None,
     drop: None,
 };
@@ -52,6 +50,7 @@ pub const PROTO_PLAYER: Entity = Entity {
 pub const PROTO_WALL: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::WALL),
+    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: None,
@@ -65,6 +64,7 @@ pub const PROTO_WALL: Entity = Entity {
 pub const PROTO_SKELETON: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::SKELETON),
+    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health { current: 8, max: 8 }),
@@ -78,6 +78,7 @@ pub const PROTO_SKELETON: Entity = Entity {
 pub const PROTO_COBWEB: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::COBWEB),
+    visible: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,
@@ -91,6 +92,7 @@ pub const PROTO_COBWEB: Entity = Entity {
 pub const PROTO_ZOMBIE: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::ZOMBIE),
+    visible: true,
     animation: Animation::default(),
     denies_movement: false,
     health: Some(Health {
@@ -107,6 +109,7 @@ pub const PROTO_ZOMBIE: Entity = Entity {
 pub const PROTO_DRAGON: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::DRAGON),
+    visible: true,
     animation: Animation::default(),
     denies_movement: false,
     health: Some(Health {
@@ -123,6 +126,7 @@ pub const PROTO_DRAGON: Entity = Entity {
 pub const PROTO_APPLE: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::APPLE),
+    visible: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,
@@ -136,6 +140,7 @@ pub const PROTO_APPLE: Entity = Entity {
 pub const PROTO_DOOR: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::DOOR),
+    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: None,
@@ -149,6 +154,7 @@ pub const PROTO_DOOR: Entity = Entity {
 const PROTO_ITEM: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::ITEM_SWORD),
+    visible: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,
