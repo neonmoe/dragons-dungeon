@@ -94,7 +94,7 @@ pub const PROTO_ZOMBIE: Entity = Entity {
     sprite: Sprite(sprites::ZOMBIE),
     visible: true,
     animation: Animation::default(),
-    denies_movement: false,
+    denies_movement: true,
     health: Some(Health {
         current: 12,
         max: 12,
@@ -111,7 +111,7 @@ pub const PROTO_DRAGON: Entity = Entity {
     sprite: Sprite(sprites::DRAGON),
     visible: true,
     animation: Animation::default(),
-    denies_movement: false,
+    denies_movement: true,
     health: Some(Health {
         current: 24,
         max: 24,

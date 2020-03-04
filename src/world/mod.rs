@@ -380,14 +380,23 @@ fn draw_hearts(
     heart_quarters: i32,
     heart_quarters_max: i32,
 ) {
-    let hearts_total = (heart_quarters as f32 / 4.0).ceil() as i32;
-    let rows = ((heart_quarters_max as f32 / 4.0).ceil() / 3.0).ceil() as i32;
-    for i in 0..hearts_total {
+    let hearts_per_row = 3;
+    let hearts = (heart_quarters as f32 / 4.0).ceil() as i32;
+    let hearts_max = (heart_quarters_max as f32 / 4.0).ceil() as i32;
+    let rows = (hearts_max as f32 / hearts_per_row as f32).ceil() as i32;
+    let heart_size = tile_size * 6.0 / 16.0;
+    for i in 0..hearts {
+        let index_on_row = (i % hearts_per_row) as f32;
+        let horizontal_offset = if rows > 1 {
+            tile_size / 2.0 - heart_size * hearts_per_row as f32 / 2.0
+        } else {
+            tile_size / 2.0 - heart_size * hearts_max as f32 / 2.0
+        };
         let coords = (
-            x + tile_size / 2.0 * (i % 3) as f32 - tile_size / 4.0,
-            y - tile_size / 2.0 * rows as f32 + tile_size / 2.0 * (i / 3) as f32,
-            tile_size / 2.0,
-            tile_size / 2.0,
+            x + heart_size * index_on_row + horizontal_offset,
+            y - heart_size * rows as f32 + heart_size * (i / hearts_per_row) as f32,
+            heart_size,
+            heart_size,
         );
         let quarters = (4 - (heart_quarters - i * 4)).max(0) as usize;
         tileset
