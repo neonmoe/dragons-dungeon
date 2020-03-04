@@ -5,7 +5,7 @@ mod entity;
 use crate::{layers, sprites};
 use ai::Ai;
 use entities::*;
-use entity::{Animation, AnimationState, Damage, Entity, Health, Inventory, Position, Sprite};
+use entity::*;
 
 use fae::{Font, GraphicsContext, Spritesheet};
 
@@ -83,13 +83,14 @@ impl World {
         // Update the rest of the entities, in order
         for i in 1..self.entities.len() {
             let (entity, others) = self.split_entities(i);
-            if entity.is_alive() {
+            if entity.can_act() {
                 if let Some(ai) = &mut entity.ai {
                     match ai {
                         Ai::Skeleton(ai) => ai.update(&mut entity.position, others),
                     }
                 }
             }
+            entity.tick_status_effects();
         }
     }
 
@@ -103,39 +104,39 @@ impl World {
     }
 
     fn update_player(&mut self, action: PlayerAction) {
-        if !self.entities[0].is_alive() {
-            return;
-        }
-
-        let mut move_direction = None;
-        match action {
-            PlayerAction::MoveUp => move_direction = Some((0, -1)),
-            PlayerAction::MoveDown => move_direction = Some((0, 1)),
-            PlayerAction::MoveRight => move_direction = Some((1, 0)),
-            PlayerAction::MoveLeft => move_direction = Some((-1, 0)),
-            PlayerAction::Pickup => {
+        if self.entities[0].can_act() {
+            let mut move_direction = None;
+            match action {
+                PlayerAction::MoveUp => move_direction = Some((0, -1)),
+                PlayerAction::MoveDown => move_direction = Some((0, 1)),
+                PlayerAction::MoveRight => move_direction = Some((1, 0)),
+                PlayerAction::MoveLeft => move_direction = Some((-1, 0)),
+                PlayerAction::Pickup => {
+                    let (player, others) = self.split_entities(0);
+                    pickup(&player.position, player.inventory.as_mut().unwrap(), others);
+                }
+                PlayerAction::Wait => {}
+            };
+            if let Some((xd, yd)) = move_direction {
                 let (player, others) = self.split_entities(0);
-                pickup(&player.position, player.inventory.as_mut().unwrap(), others);
-            }
-            PlayerAction::Wait => {}
-        };
-        if let Some((xd, yd)) = move_direction {
-            let (player, others) = self.split_entities(0);
-            let moved = move_entity(&mut player.position, others, xd, yd);
+                let moved = move_entity(&mut player.position, others, xd, yd);
 
-            if !moved {
-                let (player, others) = self.split_entities(0);
-                attack_direction(
-                    &player.position,
-                    player.damage.as_ref().unwrap(),
-                    player.health.as_mut().unwrap(),
-                    &player.inventory,
-                    others,
-                    xd,
-                    yd,
-                )
+                if !moved {
+                    let (player, others) = self.split_entities(0);
+                    attack_direction(
+                        &player.position,
+                        player.damage.as_ref().unwrap(),
+                        player.health.as_mut().unwrap(),
+                        &player.inventory,
+                        others,
+                        xd,
+                        yd,
+                    )
+                }
             }
         }
+
+        self.entities[0].tick_status_effects();
     }
 
     pub fn animate(&mut self, delta_seconds: f32, round_duration: f32) {
@@ -272,8 +273,8 @@ impl World {
                 (position.x as f32 + animation.x.current) * tile_size + offset.0,
                 (position.y as f32 + animation.y.current) * tile_size + offset.1,
             );
-            let dark = (0.2, 0.5, 0.8, 0.8 * animation.opacity.current);
-            let light = (0.9, 0.1, 0.0, 1.0 * animation.opacity.current);
+            let dark = (0.2, 0.5, 0.8, 0.3 * animation.opacity.current);
+            let light = (0.7, 0.05, 0.05, 1.0 * animation.opacity.current);
             let (current, max) = (health.current, health.max);
             draw_hearts(ctx, tileset, pos, tile_size, dark, max, max);
             draw_hearts(ctx, tileset, pos, tile_size, light, current, max);
@@ -325,20 +326,56 @@ fn attack_direction(
     xd: i32,
     yd: i32,
 ) {
+    let has_item = |item: Item| inventory.iter().any(|inv| inv.has_item(item));
+
     let (target_x, target_y) = (position.x + xd, position.y + yd);
     let mut damage_dealt = 0;
     for target in others
         .filter(|e| e.position.x == target_x && e.position.y == target_y && e.health.is_some())
     {
-        if let Some(ref mut target_health) = target.health {
+        if let Some(target_health) = &mut target.health {
             let damage_taken =
                 calculate_damage(damage, inventory, target_health, &target.inventory);
             let previous_target_health = target_health.current;
             target_health.current = (target_health.current - damage_taken).max(0);
             damage_dealt += previous_target_health - target_health.current;
         }
+
+        if let Some(target_status_effects) = &mut target.status_effects {
+            if has_item(Item::Dagger) {
+                let poison_duration = 2;
+                let poison_max_stacks = 2;
+                let poisoned_already =
+                    target_status_effects
+                        .iter_mut()
+                        .any(|status_effect| match status_effect {
+                            StatusEffect::Poison { stacks, duration } => {
+                                *stacks = (*stacks + 1).min(poison_max_stacks);
+                                *duration = poison_duration;
+                                true
+                            }
+                            _ => false,
+                        });
+                if !poisoned_already {
+                    target_status_effects.push(StatusEffect::Poison {
+                        stacks: 1,
+                        duration: poison_duration,
+                    });
+                }
+            }
+
+            if has_item(Item::Hammer) {
+                if !target_status_effects
+                    .iter()
+                    .any(|eff| *eff == StatusEffect::Stun || *eff == StatusEffect::StunImmunity)
+                {
+                    target_status_effects.push(StatusEffect::Stun);
+                }
+            }
+        }
     }
-    if inventory.iter().any(|inv| inv.has_item(Item::VampireTeeth)) {
+
+    if has_item(Item::VampireTeeth) {
         health.current = (health.current + damage_dealt).min(health.max);
     }
 }
@@ -355,6 +392,9 @@ fn calculate_damage(
     if let Some(inv) = attacker_inventory {
         if inv.has_item(Item::Sword) {
             damage *= 2;
+        }
+        if inv.has_item(Item::Dagger) {
+            damage /= 2;
         }
         if inv.has_item(Item::Scythe) && defender_health.current <= defender_health.max / 2 {
             damage = defender_health.current;
@@ -398,7 +438,7 @@ fn draw_hearts(
             heart_size,
             heart_size,
         );
-        let quarters = (4 - (heart_quarters - i * 4)).max(0) as usize;
+        let quarters = (4 - (heart_quarters - i * 4).min(4)) as usize;
         tileset
             .draw(ctx)
             .coordinates(coords)

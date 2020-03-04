@@ -59,14 +59,16 @@ fn main() -> Result<(), fae::Error> {
     let font = Font::with_ttf(&mut fae_ctx, ttf_plain).unwrap();
     let title_font = Font::with_ttf(&mut fae_ctx, ttf_title).unwrap();
     let tileset_image = Image::with_png(include_bytes!("tileset.png"))?;
+
     let tileset = SpritesheetBuilder::default()
-        .alpha_blending(true)
+        .alpha_blending(true, true)
         .minification_smoothing(true)
         .magnification_smoothing(false)
         .image(tileset_image)
         .build(&mut fae_ctx);
+
     let ui_tileset = SpritesheetBuilder::default()
-        .alpha_blending(true)
+        .alpha_blending(true, true)
         .build(&mut fae_ctx);
 
     let mut world = World::new();

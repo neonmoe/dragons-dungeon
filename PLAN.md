@@ -28,7 +28,7 @@
   - Sword: double attack damage
   - Scythe: instant kill enemies below half-health
   - Hammer: stun enemies for 1 round on hit
-  - Dagger: add a poison on enemies, can stack until some maximum
+  - Dagger: add a poison on enemies, can stack until some maximum, halve attack damage
 - Defensive item ideas:
   - Shield: halve incoming damage
   - Vampire teeth: get health from attacking

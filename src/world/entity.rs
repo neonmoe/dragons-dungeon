@@ -30,6 +30,44 @@ impl Entity {
             true
         }
     }
+
+    pub fn can_act(&self) -> bool {
+        let alive = self.is_alive();
+        let stunned = if let Some(status_effects) = &self.status_effects {
+            status_effects.contains(&StatusEffect::Stun)
+        } else {
+            false
+        };
+        alive && !stunned
+    }
+
+    pub fn tick_status_effects(&mut self) {
+        if let Some(status_effects) = &mut self.status_effects {
+            let mut stunned = false;
+            for status_effect in status_effects.iter_mut() {
+                match status_effect {
+                    StatusEffect::Stun => {
+                        stunned = true;
+                    }
+                    StatusEffect::StunImmunity => {}
+                    StatusEffect::Poison { stacks, duration } => {
+                        if let Some(health) = &mut self.health {
+                            health.current = (health.current - *stacks).max(0);
+                        }
+                        *duration -= 1;
+                    }
+                }
+            }
+            status_effects.retain(|status_effect| match status_effect {
+                StatusEffect::Stun => false,
+                StatusEffect::StunImmunity => false,
+                StatusEffect::Poison { duration, .. } => *duration > 0,
+            });
+            if stunned {
+                status_effects.push(StatusEffect::StunImmunity);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,10 +100,11 @@ pub struct Health {
     pub max: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StatusEffect {
     Stun,
-    Poison(i32),
+    StunImmunity,
+    Poison { stacks: i32, duration: i32 },
 }
 
 #[derive(Debug, Clone)]

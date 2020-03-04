@@ -67,7 +67,10 @@ pub const PROTO_SKELETON: Entity = Entity {
     visible: true,
     animation: Animation::default(),
     denies_movement: true,
-    health: Some(Health { current: 8, max: 8 }),
+    health: Some(Health {
+        current: 10,
+        max: 10,
+    }),
     status_effects: Some(Vec::new()),
     damage: Some(Damage(4)),
     inventory: None,
