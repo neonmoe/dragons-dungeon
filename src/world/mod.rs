@@ -197,7 +197,7 @@ impl World {
 
                 let alive_opacity = 1.0;
                 let alive_rotation = 0.0;
-                let dead_opacity = 0.4;
+                let dead_opacity = 0.2;
                 let dead_rotation = std::f32::consts::PI * 0.4;
                 if current.is_alive() {
                     current.animation.opacity.from = alive_opacity;
@@ -257,12 +257,16 @@ impl World {
         let mut draw_entity = |position: &Position,
                                sprite: &Sprite,
                                animation: &Animation,
-                               ai_offset: i32,
+                               (ai_offset, flip): (i32, bool),
                                z: f32| {
             let x = (position.x as f32 + animation.x.current) * tile_size + offset.0;
             let y = (position.y as f32 + animation.y.current) * tile_size + offset.1;
             let mut sprite_data = sprite.0;
             sprite_data.0 += 16 * ai_offset;
+            if flip {
+                sprite_data.0 += 16;
+                sprite_data.2 *= -1;
+            }
             tileset
                 .draw(ctx)
                 .coordinates((x, y, tile_size, tile_size))
@@ -277,7 +281,7 @@ impl World {
             if let Some(ai) = &self.ais[i] {
                 ai.animation_state(i, &self.entities)
             } else {
-                0
+                (0, false)
             }
         };
 

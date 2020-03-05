@@ -120,7 +120,7 @@ pub const PROTO_DRAGON: Entity = Entity {
         max: 24,
     }),
     status_effects: Some(Vec::new()),
-    damage: None,
+    damage: Some(Damage(10)),
     inventory: None,
     ai: Some(Ai::Dragon),
     drop: None,
