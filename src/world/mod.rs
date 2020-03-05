@@ -3,7 +3,7 @@ mod entities;
 mod entity;
 
 use crate::{layers, sprites};
-use ai::Ai;
+use ai::AiTrait;
 use entities::*;
 use entity::*;
 
@@ -29,11 +29,13 @@ pub enum PlayerAction {
     Wait,
 }
 
-#[derive(Debug, Clone)]
 pub struct World {
     /// An ever-permanent entity collection, which should be
     /// initialized all at once, and never removed from.
     entities: Vec<Entity>,
+    /// Contains the AIs of the entities that have AIs. Indices are in
+    /// sync with `entities`.
+    ais: Vec<Option<Box<dyn AiTrait>>>,
 
     /// Every round we'll copy the whole state over to this Vec, just
     /// so animations can be done nicely. Sounds wasteful, probably
@@ -45,30 +47,39 @@ pub struct World {
 
 impl World {
     pub fn new() -> World {
-        let mut entities = Vec::new();
-        entities.push(PROTO_PLAYER.clone_at(0, 0));
+        let mut world = World {
+            entities: Vec::new(),
+            ais: Vec::new(),
+            previous_round_entities: None,
+            animation_timer: 0.0,
+        };
+        world.spawn(PROTO_PLAYER.clone_at(0, 0));
 
-        entities.push(PROTO_WALL.clone_at(0, 2));
-        entities.push(PROTO_DOOR.clone_at(1, 2));
-        entities.push(PROTO_WALL.clone_at(2, 2));
+        world.spawn(PROTO_WALL.clone_at(0, 2));
+        world.spawn(PROTO_DOOR.clone_at(1, 2));
+        world.spawn(PROTO_WALL.clone_at(2, 2));
 
-        entities.push(PROTO_SKELETON.clone_at(5, 5));
-        entities.push(PROTO_COBWEB.clone_at(3, 4));
-        entities.push(PROTO_ZOMBIE.clone_at(0, 4));
-        entities.push(PROTO_DRAGON.clone_at(2, 7));
+        world.spawn(PROTO_SKELETON.clone_at(5, 5));
+        world.spawn(PROTO_COBWEB.clone_at(3, 4));
+        world.spawn(PROTO_ZOMBIE.clone_at(0, 4));
+        world.spawn(PROTO_DRAGON.clone_at(2, 7));
 
-        entities.push(PROTO_APPLE.clone_at(4, 1));
         let mut y = 3;
         for item in PROTO_ITEMS.iter() {
-            entities.push(item.clone_at(4, y));
+            world.spawn(item.clone_at(4, y));
             y += 1;
         }
 
-        World {
-            entities,
-            previous_round_entities: None,
-            animation_timer: 0.0,
+        world
+    }
+
+    fn spawn(&mut self, entity: Entity) {
+        if let Some(ai) = &entity.ai {
+            self.ais.push(Some(ai.create_ai()));
+        } else {
+            self.ais.push(None);
         }
+        self.entities.push(entity);
     }
 
     pub fn update(&mut self, action: PlayerAction) {
@@ -80,17 +91,31 @@ impl World {
         // Update player
         self.update_player(action);
 
-        // Update the rest of the entities, in order
-        for i in 1..self.entities.len() {
-            let (entity, others) = self.split_entities(i);
-            if entity.can_act() {
-                if let Some(ai) = &mut entity.ai {
-                    match ai {
-                        Ai::Skeleton(ai) => ai.update(&mut entity.position, others),
+        let mut stopwatch_timestop = false;
+        if let Some(inventory) = &mut self.entities[0].inventory {
+            for item in inventory.iter_mut() {
+                match item {
+                    Item::Stopwatch(current_tick) => {
+                        stopwatch_timestop = *current_tick;
+                        *current_tick = !*current_tick;
                     }
+                    _ => {}
                 }
             }
-            entity.tick_status_effects();
+        }
+
+        if !stopwatch_timestop {
+            // Update the rest of the entities, in order
+            for i in 1..self.entities.len() {
+                if self.entities[i].can_act() {
+                    if let Some(ai) = &mut self.ais[i] {
+                        ai.update(i, &mut self.entities);
+                    }
+                }
+                self.entities[i].tick_status_effects();
+            }
+        } else {
+            // TODO: Play a ticking sound to indicate the stopwatch stopping time?
         }
     }
 
@@ -112,21 +137,26 @@ impl World {
                 PlayerAction::MoveRight => move_direction = Some((1, 0)),
                 PlayerAction::MoveLeft => move_direction = Some((-1, 0)),
                 PlayerAction::Pickup => {
-                    let (player, others) = self.split_entities(0);
-                    pickup(&player.position, player.inventory.as_mut().unwrap(), others);
+                    let (player, others) = split_entities(0, &mut self.entities);
+                    pickup(
+                        &player.position,
+                        player.health.as_mut().unwrap(),
+                        player.inventory.as_mut().unwrap(),
+                        others,
+                    );
                 }
                 PlayerAction::Wait => {}
             };
             if let Some((xd, yd)) = move_direction {
-                let (player, others) = self.split_entities(0);
+                let (player, others) = split_entities(0, &mut self.entities);
                 let moved = move_entity(&mut player.position, others, xd, yd);
 
                 if !moved {
-                    let (player, others) = self.split_entities(0);
+                    let (player, others) = split_entities(0, &mut self.entities);
                     attack_direction(
                         &player.position,
                         player.damage.as_ref().unwrap(),
-                        player.health.as_mut().unwrap(),
+                        &mut player.health,
                         &player.inventory,
                         others,
                         xd,
@@ -280,21 +310,32 @@ impl World {
             draw_hearts(ctx, tileset, pos, tile_size, light, current, max);
         }
     }
-
-    fn split_entities(&mut self, separated_index: usize) -> (&mut Entity, EntityIter) {
-        let (head, tail) = self.entities.split_at_mut(separated_index);
-        let (separated, tail) = tail.split_at_mut(1);
-        (&mut separated[0], head.iter_mut().chain(tail.iter_mut()))
-    }
 }
 
-fn pickup(position: &Position, inventory: &mut Inventory, others: EntityIter) {
+pub fn split_entities(
+    separated_index: usize,
+    entities: &mut [Entity],
+) -> (&mut Entity, EntityIter) {
+    let (head, tail) = entities.split_at_mut(separated_index);
+    let (separated, tail) = tail.split_at_mut(1);
+    (&mut separated[0], head.iter_mut().chain(tail.iter_mut()))
+}
+
+fn pickup(position: &Position, health: &mut Health, inventory: &mut Inventory, others: EntityIter) {
     if let Some(pickup) = others
         .filter(|e| e.position == *position && e.drop.is_some())
         .nth(0)
     {
         if let Some(item) = pickup.drop {
-            if let Some(replacing_item) = inventory.add_item(item) {
+            if item == Item::Apple {
+                if health.current < health.max {
+                    pickup.drop = None;
+                    pickup.visible = false;
+                    health.current = health.max;
+                } else {
+                    // TODO: Notify: "max health already"
+                }
+            } else if let Some(replacing_item) = inventory.add_item(item) {
                 pickup.drop = Some(replacing_item);
                 pickup.sprite = replacing_item.sprite();
             } else {
@@ -305,7 +346,7 @@ fn pickup(position: &Position, inventory: &mut Inventory, others: EntityIter) {
     }
 }
 
-fn move_entity(position: &mut Position, others: EntityIter, xd: i32, yd: i32) -> bool {
+pub fn move_entity(position: &mut Position, others: EntityIter, xd: i32, yd: i32) -> bool {
     let (new_x, new_y) = (position.x + xd, position.y + yd);
     for other in others.filter(|e| e.denies_movement && e.is_alive()) {
         if new_x == other.position.x && new_y == other.position.y {
@@ -317,10 +358,11 @@ fn move_entity(position: &mut Position, others: EntityIter, xd: i32, yd: i32) ->
     true
 }
 
-fn attack_direction(
+// TODO: Animate attacks
+pub fn attack_direction(
     position: &Position,
     damage: &Damage,
-    health: &mut Health,
+    health: &mut Option<Health>,
     inventory: &Option<Inventory>,
     others: EntityIter,
     xd: i32,
@@ -376,7 +418,9 @@ fn attack_direction(
     }
 
     if has_item(Item::VampireTeeth) {
-        health.current = (health.current + damage_dealt).min(health.max);
+        if let Some(health) = health {
+            health.current = (health.current + damage_dealt).min(health.max);
+        }
     }
 }
 

@@ -9,12 +9,14 @@
 - Monday: little time, clean up / procrastination day
   - Basic combat is done, item bases have been added, most item
     implementations and pickups are wip.
-- Tuesday: dungeon generation, should be playable at this point
+- Tuesday: ~~dungeon generation, should be playable at this point~~
   - Drew sprites because inspiration struck.
-- Wednesday: content day, items & enemies
-- Thursday: polish / catchup
-- Friday: _polish_ / catchup
-- Saturday: playtesting, bugfixes
+- Wednesday: ~~content day, items & enemies~~
+  - Implemented status effects.
+- Thursday: ~~polish / catchup~~
+  - Added enemy AI and the stopwatch, so items & enemies are done.
+- Friday: ~~polish / catchup~~ dungeon generation
+- Saturday: _ui_, playtesting, bugfixes
 
 ## Core ideas
 - Only two items: an offensive and a defensive item.

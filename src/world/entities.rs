@@ -74,7 +74,7 @@ pub const PROTO_SKELETON: Entity = Entity {
     status_effects: Some(Vec::new()),
     damage: Some(Damage(4)),
     inventory: None,
-    ai: Some(Ai::Skeleton(SkeletonAi::new())),
+    ai: Some(Ai::Skeleton),
     drop: None,
 };
 
@@ -105,7 +105,7 @@ pub const PROTO_ZOMBIE: Entity = Entity {
     status_effects: Some(Vec::new()),
     damage: Some(Damage(3)),
     inventory: None,
-    ai: None,
+    ai: Some(Ai::Zombie),
     drop: None,
 };
 
@@ -122,21 +122,7 @@ pub const PROTO_DRAGON: Entity = Entity {
     status_effects: Some(Vec::new()),
     damage: None,
     inventory: None,
-    ai: None,
-    drop: None,
-};
-
-pub const PROTO_APPLE: Entity = Entity {
-    position: Position { x: 0, y: 0 },
-    sprite: Sprite(sprites::APPLE),
-    visible: true,
-    animation: Animation::default(),
-    denies_movement: false,
-    health: None,
-    status_effects: None,
-    damage: None,
-    inventory: None,
-    ai: None,
+    ai: Some(Ai::Dragon),
     drop: None,
 };
 
@@ -168,7 +154,7 @@ const PROTO_ITEM: Entity = Entity {
     drop: None,
 };
 
-pub const PROTO_ITEMS: [Entity; 7] = [
+pub const PROTO_ITEMS: [Entity; 8] = [
     Entity {
         sprite: Sprite(sprites::ITEM_SWORD),
         drop: Some(Item::Sword),
@@ -201,7 +187,12 @@ pub const PROTO_ITEMS: [Entity; 7] = [
     },
     Entity {
         sprite: Sprite(sprites::ITEM_STOPWATCH),
-        drop: Some(Item::Stopwatch),
+        drop: Some(Item::Stopwatch(false)),
+        ..PROTO_ITEM
+    },
+    Entity {
+        sprite: Sprite(sprites::ITEM_APPLE),
+        drop: Some(Item::Apple),
         ..PROTO_ITEM
     },
 ];

@@ -1,5 +1,7 @@
 use crate::sprites::{self, SpriteData};
 use crate::world::ai::Ai;
+use std::iter::Chain;
+use std::option::IterMut;
 
 #[derive(Debug, Clone)]
 pub struct Entity {
@@ -140,6 +142,10 @@ impl Inventory {
         self.item_left.iter().any(|i| *i == item) || self.item_right.iter().any(|i| *i == item)
     }
 
+    pub fn iter_mut(&mut self) -> Chain<IterMut<Item>, IterMut<Item>> {
+        self.item_left.iter_mut().chain(self.item_right.iter_mut())
+    }
+
     pub fn add_item(&mut self, item: Item) -> Option<Item> {
         if let Some(older_item) = &mut self.older_item {
             match older_item {
@@ -174,7 +180,8 @@ pub enum Item {
     Dagger,
     Shield,
     VampireTeeth,
-    Stopwatch,
+    Stopwatch(bool),
+    Apple,
 }
 
 impl Item {
@@ -186,7 +193,14 @@ impl Item {
             Item::Dagger => "Dagger",
             Item::Shield => "Shield",
             Item::VampireTeeth => "Garlic",
-            Item::Stopwatch => "Stopwatch",
+            Item::Stopwatch(tick) => {
+                if *tick {
+                    "Stopwatch (tick)"
+                } else {
+                    "Stopwatch (tock)"
+                }
+            }
+            Item::Apple => "Apple",
         }
     }
 
@@ -198,7 +212,8 @@ impl Item {
             Item::Dagger => Sprite(sprites::ITEM_DAGGER),
             Item::Shield => Sprite(sprites::ITEM_SHIELD),
             Item::VampireTeeth => Sprite(sprites::ITEM_VAMPIRE_TEETH),
-            Item::Stopwatch => Sprite(sprites::ITEM_STOPWATCH),
+            Item::Stopwatch(_) => Sprite(sprites::ITEM_STOPWATCH),
+            Item::Apple => Sprite(sprites::ITEM_APPLE),
         }
     }
 }
