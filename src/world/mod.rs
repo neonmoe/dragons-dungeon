@@ -254,38 +254,53 @@ impl World {
             )
         };
 
-        let mut draw_entity =
-            |position: &Position, sprite: &Sprite, animation: &Animation, z: f32| {
-                let x = (position.x as f32 + animation.x.current) * tile_size + offset.0;
-                let y = (position.y as f32 + animation.y.current) * tile_size + offset.1;
-                tileset
-                    .draw(ctx)
-                    .coordinates((x, y, tile_size, tile_size))
-                    .texture_coordinates(sprite.0)
-                    .color((1.0, 1.0, 1.0, animation.opacity.current))
-                    .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
-                    .z(z)
-                    .finish();
-            };
+        let mut draw_entity = |position: &Position,
+                               sprite: &Sprite,
+                               animation: &Animation,
+                               ai_offset: i32,
+                               z: f32| {
+            let x = (position.x as f32 + animation.x.current) * tile_size + offset.0;
+            let y = (position.y as f32 + animation.y.current) * tile_size + offset.1;
+            let mut sprite_data = sprite.0;
+            sprite_data.0 += 16 * ai_offset;
+            tileset
+                .draw(ctx)
+                .coordinates((x, y, tile_size, tile_size))
+                .texture_coordinates(sprite_data)
+                .color((1.0, 1.0, 1.0, animation.opacity.current))
+                .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
+                .z(z)
+                .finish();
+        };
+
+        let get_ai_state = |i: usize| {
+            if let Some(ai) = &self.ais[i] {
+                ai.animation_state(i, &self.entities)
+            } else {
+                0
+            }
+        };
 
         // Draw the dead
-        for (position, sprite, animation) in self
+        for (i, position, sprite, animation) in self
             .entities
             .iter()
-            .filter(|e| !e.is_alive() && e.visible)
-            .map(|e| (&e.position, &e.sprite, &e.animation))
+            .enumerate()
+            .filter(|(_, e)| !e.is_alive() && e.visible)
+            .map(|(i, e)| (i, &e.position, &e.sprite, &e.animation))
         {
-            draw_entity(position, sprite, animation, layers::DEAD);
+            draw_entity(position, sprite, animation, get_ai_state(i), layers::DEAD);
         }
 
         // Draw the alive (so they get drawn after the dead
-        for (position, sprite, animation) in self
+        for (i, position, sprite, animation) in self
             .entities
             .iter()
-            .filter(|e| e.is_alive() && e.visible)
-            .map(|e| (&e.position, &e.sprite, &e.animation))
+            .enumerate()
+            .filter(|(_, e)| e.is_alive() && e.visible)
+            .map(|(i, e)| (i, &e.position, &e.sprite, &e.animation))
         {
-            draw_entity(position, sprite, animation, layers::ALIVE);
+            draw_entity(position, sprite, animation, get_ai_state(i), layers::ALIVE);
         }
 
         // Draw hearts
