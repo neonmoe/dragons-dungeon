@@ -14,7 +14,7 @@
 - Wednesday: ~~content day, items & enemies~~
   - Implemented status effects.
 - Thursday: ~~polish / catchup~~
-  - Added enemy AI and the stopwatch, so items & enemies are done.
+  - Added enemy AIs and the stopwatch, so items & enemies are done.
 - Friday: ~~polish / catchup~~ dungeon generation
 - Saturday: _ui_, playtesting, bugfixes
 
@@ -30,7 +30,8 @@
   - Sword: double attack damage
   - Scythe: instant kill enemies below half-health
   - Hammer: stun enemies for 1 round on hit
-  - Dagger: add a poison on enemies, can stack until some maximum, halve attack damage
+  - Dagger: add a poison on enemies, can stack until some maximum,
+    halve attack damage
 - Defensive item ideas:
   - Shield: halve incoming damage
   - Vampire teeth: get health from attacking
@@ -38,13 +39,14 @@
 - Enemy ideas:
   - Skeleton: walks around randomly, attacks if player is in an
     adjacent tile.
-  - Cobweb: doesn't move, attaches to the player on collision, soaks
+  - ~~Cobweb: doesn't move, attaches to the player on collision, soaks
     all damage and prevents movement until the attacks kill the
-    cobweb.
+    cobweb.~~
   - Zombie: acts every other turn, follows and attacks the player if
     within some range and in the same room.
   - Dragon: big boss at the end, has lots of health, attacks via fire
-    breathing which is well telegraphed (highlights tiles hit in red).
+    breathing which is well telegraphed (highlights tiles hit in red)
+    and charging at the player.
 - Traps: switches and pressure plates can activate traps, which the
   player can use to their advantage, or sometimes, get struck
   by. Should be easy to spot.
