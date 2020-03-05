@@ -152,6 +152,8 @@ impl World {
                 let moved = move_entity(&mut player.position, others, xd, yd);
 
                 if !moved {
+                    // TODO: Add door functionality
+
                     let (player, others) = split_entities(0, &mut self.entities);
                     attack_direction(
                         &player.position,
