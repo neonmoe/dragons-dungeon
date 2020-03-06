@@ -1,7 +1,26 @@
 use crate::world::{Item, World};
 use fae::{Font, GraphicsContext, Spritesheet};
+use std::sync::Mutex;
 
 pub const UI_AREA_WIDTH: f32 = 300.0;
+
+#[derive(Debug, Default)]
+pub struct DebugState {
+    pub entity_count: usize,
+}
+
+lazy_static::lazy_static! {
+    static ref DEBUG_STATE: Mutex<DebugState> = Mutex::new(DebugState::default());
+}
+
+impl DebugState {
+    pub fn modify<F: FnOnce(&mut DebugState)>(f: F) {
+        let lock = DEBUG_STATE.lock();
+        if let Ok(mut state) = lock {
+            f(&mut state);
+        }
+    }
+}
 
 pub struct Ui {}
 
@@ -16,6 +35,7 @@ impl Ui {
         font: &Font,
         spritesheet: &Spritesheet,
         world: &World,
+        show_debug_info: bool,
     ) {
         let (width, height) = (ctx.width, ctx.height);
 
@@ -75,5 +95,34 @@ impl Ui {
             .z(1.0)
             .color((0.9, 0.9, 0.9, 1.0))
             .finish();
+
+        if show_debug_info {
+            if let Ok(debug_state) = DEBUG_STATE.lock() {
+                let ui_text = format!("{:#?}", debug_state);
+                let font_size = 12.0;
+                if let Some(mut rect) = font
+                    .draw(ctx, &ui_text, 0.0, 0.0, font_size)
+                    .visibility(false)
+                    .finish()
+                {
+                    let (x, y) = (20.0, ctx.height - rect.height - 20.0);
+                    let padding = 10.0;
+                    rect.x = x - padding;
+                    rect.y = y - padding;
+                    rect.width += padding * 2.0;
+                    rect.height += padding * 2.0;
+                    spritesheet
+                        .draw(ctx)
+                        .coordinates(rect)
+                        .color((0.1, 0.1, 0.1, 0.6))
+                        .z(0.99)
+                        .finish();
+                    font.draw(ctx, &ui_text, x, y, font_size)
+                        .z(1.0)
+                        .color((1.0, 1.0, 1.0, 1.0))
+                        .finish();
+                }
+            }
+        }
     }
 }

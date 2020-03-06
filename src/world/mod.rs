@@ -1,5 +1,5 @@
 mod ai;
-mod entities;
+pub mod entities;
 mod entity;
 
 use crate::{layers, sprites};
@@ -59,27 +59,41 @@ impl World {
         world.spawn(PROTO_DOOR.clone_at(1, 2));
         world.spawn(PROTO_WALL.clone_at(2, 2));
 
-        world.spawn(PROTO_SKELETON.clone_at(5, 5));
-        world.spawn(PROTO_COBWEB.clone_at(3, 4));
-        world.spawn(PROTO_ZOMBIE.clone_at(0, 4));
-        world.spawn(PROTO_DRAGON.clone_at(2, 7));
-
         let mut y = 3;
         for item in PROTO_ITEMS.iter() {
-            world.spawn(item.clone_at(4, y));
+            world.spawn(item.clone_at(1, y));
             y += 1;
         }
 
         world
     }
 
-    fn spawn(&mut self, entity: Entity) {
-        if let Some(ai) = &entity.ai {
-            self.ais.push(Some(ai.create_ai()));
+    pub fn spawn(&mut self, entity: Entity) -> usize {
+        let index = if let Some(index) = self.entities.iter().position(|e| e.marked_for_death) {
+            if let Some(ai) = &entity.ai {
+                self.ais[index] = Some(ai.create_ai());
+            } else {
+                self.ais[index] = None;
+            }
+            self.entities[index] = entity.clone();
+            if let Some(previous_round_entities) = &mut self.previous_round_entities {
+                previous_round_entities[index] = entity;
+            }
+            index
         } else {
-            self.ais.push(None);
-        }
-        self.entities.push(entity);
+            if let Some(ai) = &entity.ai {
+                self.ais.push(Some(ai.create_ai()));
+            } else {
+                self.ais.push(None);
+            }
+            self.entities.push(entity.clone());
+            if let Some(previous_round_entities) = &mut self.previous_round_entities {
+                previous_round_entities.push(entity);
+            }
+            self.entities.len() - 1
+        };
+        crate::ui::DebugState::modify(|state| state.entity_count = self.entities.len());
+        index
     }
 
     pub fn update(&mut self, action: PlayerAction) {
@@ -106,17 +120,37 @@ impl World {
 
         if !stopwatch_timestop {
             // Update the rest of the entities, in order
-            for i in 1..self.entities.len() {
-                if self.entities[i].can_act() {
-                    if let Some(ai) = &mut self.ais[i] {
-                        ai.update(i, &mut self.entities);
-                    }
+            let mut i = 1;
+            loop {
+                self.update_at_index(i);
+                i += 1;
+                if i == self.entities.len() {
+                    break;
                 }
-                self.entities[i].tick_status_effects();
             }
         } else {
             // TODO: Play a ticking sound to indicate the stopwatch stopping time?
         }
+    }
+
+    /// Updates the entity at index `i` and if that entity spawns new
+    /// entities that have an index less than `i`, updates those as
+    /// well.
+    fn update_at_index(&mut self, i: usize) {
+        if self.entities[i].can_act() {
+            if let Some(ai) = &mut self.ais[i] {
+                let spawns = ai.update(i, &mut self.entities);
+                if let Some(spawns) = spawns {
+                    for new_entity in spawns {
+                        let index = self.spawn(new_entity);
+                        if index < i {
+                            self.update_at_index(index);
+                        }
+                    }
+                }
+            }
+        }
+        self.entities[i].tick_status_effects();
     }
 
     pub fn player(&self) -> &Entity {
@@ -292,7 +326,7 @@ impl World {
             .entities
             .iter()
             .enumerate()
-            .filter(|(_, e)| !e.is_alive() && e.visible)
+            .filter(|(_, e)| !e.is_alive() && !e.marked_for_death)
             .map(|(i, e)| (i, &e.position, &e.sprite, &e.animation))
         {
             draw_entity(position, sprite, animation, get_ai_state(i), layers::DEAD);
@@ -303,7 +337,7 @@ impl World {
             .entities
             .iter()
             .enumerate()
-            .filter(|(_, e)| e.is_alive() && e.visible)
+            .filter(|(_, e)| e.is_alive() && !e.marked_for_death)
             .map(|(i, e)| (i, &e.position, &e.sprite, &e.animation))
         {
             draw_entity(position, sprite, animation, get_ai_state(i), layers::ALIVE);
@@ -313,7 +347,7 @@ impl World {
         for (position, animation, health) in self
             .entities
             .iter()
-            .filter(|e| e.is_alive() && e.visible)
+            .filter(|e| e.is_alive() && !e.marked_for_death)
             .filter_map(|e| {
                 e.health
                     .as_ref()
@@ -351,7 +385,7 @@ fn pickup(position: &Position, health: &mut Health, inventory: &mut Inventory, o
             if item == Item::Apple {
                 if health.current < health.max {
                     pickup.drop = None;
-                    pickup.visible = false;
+                    pickup.marked_for_death = true;
                     health.current = health.max;
                 } else {
                     // TODO: Notify: "max health already"
@@ -361,7 +395,7 @@ fn pickup(position: &Position, health: &mut Health, inventory: &mut Inventory, o
                 pickup.sprite = replacing_item.sprite();
             } else {
                 pickup.drop = None;
-                pickup.visible = false;
+                pickup.marked_for_death = true;
             }
         }
     }

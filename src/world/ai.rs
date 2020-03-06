@@ -1,5 +1,5 @@
 use crate::world::entity::Entity;
-use crate::world::{attack_direction, move_entity, split_entities};
+use crate::world::{attack_direction, entities, move_entity, split_entities};
 
 #[derive(Debug, Clone)]
 pub enum Ai {
@@ -7,6 +7,7 @@ pub enum Ai {
     //Cobweb,
     Zombie,
     Dragon,
+    Flame,
 }
 
 impl Ai {
@@ -15,12 +16,13 @@ impl Ai {
             Ai::Skeleton => Box::new(SkeletonAi::new()),
             Ai::Zombie => Box::new(ZombieAi::new()),
             Ai::Dragon => Box::new(DragonAi::new()),
+            Ai::Flame => Box::new(FlameAi::new()),
         }
     }
 }
 
 pub trait AiTrait {
-    fn update(&mut self, index: usize, entities: &mut [Entity]);
+    fn update(&mut self, index: usize, entities: &mut [Entity]) -> Option<Vec<Entity>>;
     fn animation_state(&self, index: usize, entities: &[Entity]) -> (i32, bool);
 }
 
@@ -82,7 +84,7 @@ impl SkeletonAi {
 }
 
 impl AiTrait for SkeletonAi {
-    fn update(&mut self, index: usize, entities: &mut [Entity]) {
+    fn update(&mut self, index: usize, entities: &mut [Entity]) -> Option<Vec<Entity>> {
         if self.scared(index, entities) {
             let player_path = find_path_to_player(index, entities, 2);
             if let Some((xd, yd)) = player_path {
@@ -108,6 +110,7 @@ impl AiTrait for SkeletonAi {
                 self.step = (self.step + 1) % SKELETON_PATH.len();
             }
         }
+        None
     }
 
     fn animation_state(&self, index: usize, entities: &[Entity]) -> (i32, bool) {
@@ -133,10 +136,10 @@ impl ZombieAi {
 }
 
 impl AiTrait for ZombieAi {
-    fn update(&mut self, index: usize, entities: &mut [Entity]) {
+    fn update(&mut self, index: usize, entities: &mut [Entity]) -> Option<Vec<Entity>> {
         if self.exhausted {
             self.exhausted = false;
-            return;
+            return None;
         }
 
         let direction_attack = find_player(index, entities);
@@ -159,6 +162,7 @@ impl AiTrait for ZombieAi {
         }
 
         self.exhausted = true;
+        None
     }
 
     fn animation_state(&self, index: usize, entities: &[Entity]) -> (i32, bool) {
@@ -186,7 +190,8 @@ impl DragonAi {
 }
 
 impl AiTrait for DragonAi {
-    fn update(&mut self, index: usize, entities: &mut [Entity]) {
+    fn update(&mut self, index: usize, entities: &mut [Entity]) -> Option<Vec<Entity>> {
+        let mut spawns = None;
         if let Some((xd, yd, ref mut time)) = self.charge_direction {
             let (me, others) = split_entities(index, entities);
             let moved = move_entity(&mut me.position, others, xd, yd);
@@ -208,8 +213,8 @@ impl AiTrait for DragonAi {
                 );
             }
         } else if let Some((ref mut flame, _)) = self.flame_stage {
-            *flame -= 1;
-            if *flame == 0 {
+            *flame += 1;
+            if *flame == FLAME_LIFETIME - 1 {
                 self.flame_stage = None;
             }
         } else {
@@ -227,20 +232,84 @@ impl AiTrait for DragonAi {
                 } else {
                     1
                 };
-                self.flame_stage = Some((5, direction));
-                // TODO: Spawn flames
+                self.flame_stage = Some((0, direction));
+                let mut flames = Vec::with_capacity(9);
+                let dragon = &entities[index].position;
+                let offset_x = if direction == -1 { -3 } else { 0 };
+                let offset_y = -2;
+                for y in 0..5 {
+                    for x in 0..4 {
+                        let x = x + dragon.x + offset_x;
+                        let y = y + dragon.y + offset_y;
+                        if x == dragon.x && y == dragon.y {
+                            continue;
+                        }
+                        flames.push(entities::PROTO_FLAME.clone_at(x, y));
+                    }
+                }
+                spawns = Some(flames);
             }
         }
+        spawns
     }
 
     fn animation_state(&self, _index: usize, _entities: &[Entity]) -> (i32, bool) {
         if let Some((xd, yd, _)) = self.charge_direction {
             let flip = xd < 0 || yd < 0;
             (1, flip)
-        } else if let Some((_, xd)) = self.flame_stage {
-            (2, xd < 0)
+        } else if let Some((flame_stage, xd)) = self.flame_stage {
+            if flame_stage == FLAME_LIFETIME - 2 {
+                (3, xd < 0)
+            } else {
+                (2, xd < 0)
+            }
         } else {
             (0, false)
+        }
+    }
+}
+
+const FLAME_BUILDUP_TICKS: i32 = 3;
+const FLAME_LIFETIME: i32 = 7;
+
+#[derive(Debug, Clone)]
+pub struct FlameAi {
+    state: i32,
+}
+
+impl FlameAi {
+    const fn new() -> FlameAi {
+        FlameAi { state: 0 }
+    }
+}
+
+impl AiTrait for FlameAi {
+    fn update(&mut self, index: usize, entities: &mut [Entity]) -> Option<Vec<Entity>> {
+        self.state += 1;
+        if self.state > FLAME_BUILDUP_TICKS && self.state < FLAME_LIFETIME - 1 {
+            let (me, others) = split_entities(index, entities);
+            attack_direction(
+                &me.position,
+                me.damage.as_ref().unwrap(),
+                &mut me.health,
+                &me.inventory,
+                others,
+                0,
+                0,
+            );
+        }
+        if self.state >= FLAME_LIFETIME {
+            entities[index].marked_for_death = true;
+        }
+        None
+    }
+
+    fn animation_state(&self, _index: usize, _entities: &[Entity]) -> (i32, bool) {
+        let flip = (self.state - 1).max(FLAME_BUILDUP_TICKS) % 2 == 0;
+        if self.state == FLAME_LIFETIME - 1 {
+            (4, flip)
+        } else {
+            ((self.state - 1).min(FLAME_BUILDUP_TICKS), flip)
         }
     }
 }

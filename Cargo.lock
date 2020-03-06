@@ -298,6 +298,7 @@ name = "sevendrl"
 version = "0.1.0"
 dependencies = [
  "fae",
+ "lazy_static",
  "log",
  "sdl2",
 ]

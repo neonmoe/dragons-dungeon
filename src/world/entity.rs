@@ -7,7 +7,6 @@ use std::option::IterMut;
 pub struct Entity {
     pub position: Position,
     pub sprite: Sprite,
-    pub visible: bool,
     pub animation: Animation,
     pub denies_movement: bool,
     pub health: Option<Health>,
@@ -16,6 +15,7 @@ pub struct Entity {
     pub inventory: Option<Inventory>,
     pub ai: Option<Ai>,
     pub drop: Option<Item>,
+    pub marked_for_death: bool,
 }
 
 impl Entity {
@@ -34,13 +34,12 @@ impl Entity {
     }
 
     pub fn can_act(&self) -> bool {
-        let alive = self.is_alive();
         let stunned = if let Some(status_effects) = &self.status_effects {
             status_effects.contains(&StatusEffect::Stun)
         } else {
             false
         };
-        alive && !stunned
+        self.is_alive() && !stunned && !self.marked_for_death
     }
 
     pub fn tick_status_effects(&mut self) {

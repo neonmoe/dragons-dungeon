@@ -73,6 +73,7 @@ fn main() -> Result<(), fae::Error> {
 
     let mut world = World::new();
     let mut ui = Ui::new();
+    let mut show_debug_info = cfg!(debug_assertions);
 
     let mut event_pump = sdl.event_pump().unwrap();
     let mut last_frame_time = None;
@@ -105,6 +106,22 @@ fn main() -> Result<(), fae::Error> {
                             action_queue.push_back(PlayerAction::Pickup);
                         } else if input::is_key_wait(keycode) {
                             action_queue.push_back(PlayerAction::Wait);
+                        } else {
+                            // Debug keys, not part of the input system:
+
+                            use sdl2::keyboard::Keycode;
+                            if keycode == Keycode::Num1 {
+                                world.spawn(world::entities::PROTO_SKELETON.clone_at(5, 5));
+                            }
+                            if keycode == Keycode::Num2 {
+                                world.spawn(world::entities::PROTO_ZOMBIE.clone_at(5, 5));
+                            }
+                            if keycode == Keycode::Num3 {
+                                world.spawn(world::entities::PROTO_DRAGON.clone_at(5, 5));
+                            }
+                            if keycode == Keycode::F3 {
+                                show_debug_info = !show_debug_info;
+                            }
                         }
                     }
                 }
@@ -114,6 +131,10 @@ fn main() -> Result<(), fae::Error> {
 
         // One action per frame:
         if let Some(action) = action_queue.pop_front() {
+            // TODO: Split updates into "player updates" and "world updates"
+            // where input is disabled while the player
+            // animates, and the player gets to see what the enemies
+            // do in response. This should be an option.
             world.update(action);
         }
 
@@ -133,7 +154,7 @@ fn main() -> Result<(), fae::Error> {
         let mut ctx: GraphicsContext = fae_ctx.start_frame(width, height, dpi_factor);
 
         world.render(&mut ctx, &font, &tileset);
-        ui.render(&mut ctx, &font, &ui_tileset, &world);
+        ui.render(&mut ctx, &font, &ui_tileset, &world, show_debug_info);
         title_font
             .draw(&mut ctx, "7DRL entry by neonmoe", 16.0, -4.0, 32.0)
             .color((1.0, 1.0, 1.0, 1.0))

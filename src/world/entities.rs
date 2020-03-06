@@ -33,7 +33,6 @@ impl Animation {
 pub const PROTO_PLAYER: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::PLAYER),
-    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -45,12 +44,12 @@ pub const PROTO_PLAYER: Entity = Entity {
     inventory: Some(Inventory::new()),
     ai: None,
     drop: None,
+    marked_for_death: false,
 };
 
 pub const PROTO_WALL: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::WALL),
-    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: None,
@@ -59,12 +58,12 @@ pub const PROTO_WALL: Entity = Entity {
     inventory: None,
     ai: None,
     drop: None,
+    marked_for_death: false,
 };
 
 pub const PROTO_SKELETON: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::SKELETON),
-    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -76,12 +75,13 @@ pub const PROTO_SKELETON: Entity = Entity {
     inventory: None,
     ai: Some(Ai::Skeleton),
     drop: None,
+    marked_for_death: false,
 };
 
+#[allow(dead_code)]
 pub const PROTO_COBWEB: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::COBWEB),
-    visible: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,
@@ -90,12 +90,12 @@ pub const PROTO_COBWEB: Entity = Entity {
     inventory: None,
     ai: None,
     drop: None,
+    marked_for_death: false,
 };
 
 pub const PROTO_ZOMBIE: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::ZOMBIE),
-    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -107,12 +107,12 @@ pub const PROTO_ZOMBIE: Entity = Entity {
     inventory: None,
     ai: Some(Ai::Zombie),
     drop: None,
+    marked_for_death: false,
 };
 
 pub const PROTO_DRAGON: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::DRAGON),
-    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -124,12 +124,26 @@ pub const PROTO_DRAGON: Entity = Entity {
     inventory: None,
     ai: Some(Ai::Dragon),
     drop: None,
+    marked_for_death: false,
+};
+
+pub const PROTO_FLAME: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::FLAME),
+    animation: Animation::default(),
+    denies_movement: false,
+    health: None,
+    status_effects: None,
+    damage: Some(Damage(5)),
+    inventory: None,
+    ai: Some(Ai::Flame),
+    drop: None,
+    marked_for_death: false,
 };
 
 pub const PROTO_DOOR: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::DOOR),
-    visible: true,
     animation: Animation::default(),
     denies_movement: true,
     health: None,
@@ -138,12 +152,12 @@ pub const PROTO_DOOR: Entity = Entity {
     inventory: None,
     ai: None,
     drop: None,
+    marked_for_death: false,
 };
 
 const PROTO_ITEM: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::ITEM_SWORD),
-    visible: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,
@@ -152,6 +166,7 @@ const PROTO_ITEM: Entity = Entity {
     inventory: None,
     ai: None,
     drop: None,
+    marked_for_death: false,
 };
 
 pub const PROTO_ITEMS: [Entity; 8] = [
