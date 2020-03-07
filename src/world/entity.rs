@@ -19,6 +19,7 @@ pub struct Entity {
     pub marked_for_death: bool,
     pub door: bool,
     pub next_level: bool,
+    pub dragon: bool,
 }
 
 impl Entity {

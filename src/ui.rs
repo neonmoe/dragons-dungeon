@@ -144,6 +144,7 @@ impl Ui {
         spritesheet: &Spritesheet,
         world: &World,
         game_over: bool,
+        victory: bool,
         show_debug_info: bool,
     ) {
         let (width, height) = (ctx.width, ctx.height);
@@ -237,6 +238,21 @@ impl Ui {
             menu.print_text(ctx, font, "Better luck next time!");
             menu.space();
             menu.print_text(ctx, font, "Press R to retry.");
+        }
+
+        if victory {
+            let width = 410.0;
+            let height = 220.0;
+            let menu_x = (ctx.width - UI_AREA_WIDTH - padding * 2.0) / 2.0 - width / 2.0;
+            let menu_y = ctx.height / 2.0 - height / 2.0;
+            let mut menu = MenuFlow::new(ctx, spritesheet, menu_x, menu_y, width, height, 10.0);
+            menu.space();
+            menu.print_header_centered(ctx, font, "Victory!");
+            menu.space();
+            menu.print_text(ctx, font, "You have defeated the dragon!");
+            menu.print_text(ctx, font, "Congratulations!");
+            menu.space();
+            menu.print_text(ctx, font, "Press R to try your luck with the next one.");
         }
 
         if show_debug_info {

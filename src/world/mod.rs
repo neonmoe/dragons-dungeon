@@ -98,7 +98,9 @@ impl World {
         self.level += 1;
 
         // Generate the new entities
-        let (entities, rooms, player_origin) = self.generator.generate(self.level);
+        let (entities, rooms, player_origin) = self
+            .generator
+            .generate(self.level, self.entities[0].inventory.as_ref().unwrap());
 
         // Kill the current stage
         self.entities.truncate(1);
@@ -161,8 +163,6 @@ impl World {
 
         // Update player
         self.update_player(action, debug_mode);
-
-        // TODO: Check if dragon is dead, victory
 
         // Update discovered rooms
         let player_room = self
@@ -233,6 +233,14 @@ impl World {
             }
         }
         self.entities[i].tick_status_effects();
+    }
+
+    pub fn is_dragon_dead(&self) -> bool {
+        if let Some(dragon) = self.entities.iter().find(|e| e.dragon) {
+            !dragon.is_alive()
+        } else {
+            false
+        }
     }
 
     pub fn player(&self) -> &Entity {

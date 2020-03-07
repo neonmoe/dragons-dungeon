@@ -1,5 +1,5 @@
 use super::entities::*;
-use super::entity::Entity;
+use super::entity::{Entity, Inventory};
 use super::Room;
 use rand_core::{RngCore, SeedableRng};
 use rand_pcg::Pcg32;
@@ -80,12 +80,16 @@ fn rand_enemy(rng: &mut Pcg32, level: i32) -> Entity {
     }
 }
 
-fn rand_item(rng: &mut Pcg32, level: i32) -> Entity {
-    let index = if level > 2 {
-        (rng.next_u32() as usize) % PROTO_ITEMS.len()
-    } else {
-        (rng.next_u32() as usize) % 4
-    };
+fn rand_item(rng: &mut Pcg32, player_inventory: &Inventory, level: i32) -> Entity {
+    let items_len = if level > 2 { PROTO_ITEMS.len() } else { 4 };
+    let mut index = (rng.next_u32() as usize) % items_len;
+    for _ in 0..3 {
+        if player_inventory.has_item(PROTO_ITEMS[index].drop.unwrap()) {
+            index = (index + 1) % items_len;
+        } else {
+            break;
+        }
+    }
     PROTO_ITEMS[index].clone()
 }
 
@@ -108,7 +112,11 @@ impl WorldGenerator {
         }
     }
 
-    pub fn generate(&mut self, level: i32) -> (Vec<Entity>, Vec<Room>, (i32, i32)) {
+    pub fn generate(
+        &mut self,
+        level: i32,
+        inventory: &Inventory,
+    ) -> (Vec<Entity>, Vec<Room>, (i32, i32)) {
         let origin = (0, 0);
         let room_types = get_rooms(level);
         let mut entities: Vec<Entity> = Vec::with_capacity(128);
@@ -130,8 +138,15 @@ impl WorldGenerator {
             let room_x = door.room_x + door.direction.0 * (ROOM_WIDTH - 1);
             let room_y = door.room_y + door.direction.1 * (ROOM_HEIGHT - 1);
 
-            let (room, new_doors) =
-                self.generate_room(&mut entities, &rooms, room_x, room_y, level, *room_type);
+            let (room, new_doors) = self.generate_room(
+                &mut entities,
+                inventory,
+                &rooms,
+                room_x,
+                room_y,
+                level,
+                *room_type,
+            );
             rooms.push(room);
             doors.extend(new_doors.into_iter());
         }
@@ -147,6 +162,7 @@ impl WorldGenerator {
     fn generate_room(
         &mut self,
         entities: &mut Vec<Entity>,
+        player_inventory: &Inventory,
         rooms: &[Room],
         room_x: i32,
         room_y: i32,
@@ -228,8 +244,7 @@ impl WorldGenerator {
                 }
             }
             RoomType::ItemRoom => {
-                // TODO: Don't roll items the player already has in their inventory.
-                let mut item = rand_item(&mut self.rng, level);
+                let mut item = rand_item(&mut self.rng, player_inventory, level);
                 item.position.x = center_x;
                 item.position.y = center_y;
                 entities.push(item);

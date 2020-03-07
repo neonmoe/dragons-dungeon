@@ -77,8 +77,12 @@ fn main() -> Result<(), fae::Error> {
     let mut last_frame_time = None;
     let mut action_queue: VecDeque<PlayerAction> = VecDeque::new();
 
+    let mut game_over_override = false;
+    let mut victory_override = false;
+
     'game_loop: loop {
-        let game_over = !world.player().is_alive();
+        let game_over = !world.player().is_alive() || game_over_override;
+        let victory = world.is_dragon_dead() || victory_override;
 
         for event in event_pump.poll_iter() {
             match event {
@@ -115,17 +119,25 @@ fn main() -> Result<(), fae::Error> {
                             // Debug keys, not part of the input system:
 
                             use sdl2::keyboard::Keycode;
-                            if keycode == Keycode::Num1 {
-                                world.spawn(world::entities::PROTO_SKELETON.clone_at(5, 5));
-                            }
-                            if keycode == Keycode::Num2 {
-                                world.spawn(world::entities::PROTO_ZOMBIE.clone_at(5, 5));
-                            }
-                            if keycode == Keycode::Num3 {
-                                world.spawn(world::entities::PROTO_DRAGON.clone_at(5, 5));
-                            }
                             if keycode == Keycode::F3 {
                                 show_debug_info = !show_debug_info;
+                            }
+                            if show_debug_info {
+                                if keycode == Keycode::Num1 {
+                                    world.spawn(world::entities::PROTO_SKELETON.clone_at(5, 5));
+                                }
+                                if keycode == Keycode::Num2 {
+                                    world.spawn(world::entities::PROTO_ZOMBIE.clone_at(5, 5));
+                                }
+                                if keycode == Keycode::Num3 {
+                                    world.spawn(world::entities::PROTO_DRAGON.clone_at(5, 5));
+                                }
+                                if keycode == Keycode::F4 {
+                                    victory_override = !victory_override;
+                                }
+                                if keycode == Keycode::F5 {
+                                    game_over_override = !game_over_override;
+                                }
                             }
                         }
                     }
@@ -165,6 +177,7 @@ fn main() -> Result<(), fae::Error> {
             &ui_tileset,
             &world,
             game_over,
+            victory,
             show_debug_info,
         );
 

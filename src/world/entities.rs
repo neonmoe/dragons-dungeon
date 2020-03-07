@@ -48,6 +48,7 @@ pub const PROTO_PLAYER: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: false,
 };
 
 pub const PROTO_WALL: Entity = Entity {
@@ -65,6 +66,7 @@ pub const PROTO_WALL: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: false,
 };
 
 pub const PROTO_SKELETON: Entity = Entity {
@@ -85,6 +87,7 @@ pub const PROTO_SKELETON: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: false,
 };
 
 #[allow(dead_code)]
@@ -103,6 +106,7 @@ pub const PROTO_COBWEB: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: false,
 };
 
 pub const PROTO_ZOMBIE: Entity = Entity {
@@ -123,6 +127,7 @@ pub const PROTO_ZOMBIE: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: false,
 };
 
 pub const PROTO_DRAGON: Entity = Entity {
@@ -143,6 +148,7 @@ pub const PROTO_DRAGON: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: true,
 };
 
 pub const PROTO_FLAME: Entity = Entity {
@@ -160,6 +166,7 @@ pub const PROTO_FLAME: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: false,
 };
 
 pub const PROTO_DOOR: Entity = Entity {
@@ -177,6 +184,7 @@ pub const PROTO_DOOR: Entity = Entity {
     marked_for_death: false,
     door: true,
     next_level: false,
+    dragon: false,
 };
 
 pub const PROTO_NEXT_LEVEL: Entity = Entity {
@@ -194,6 +202,7 @@ pub const PROTO_NEXT_LEVEL: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: true,
+    dragon: false,
 };
 
 const PROTO_ITEM: Entity = Entity {
@@ -211,6 +220,7 @@ const PROTO_ITEM: Entity = Entity {
     marked_for_death: false,
     door: false,
     next_level: false,
+    dragon: false,
 };
 
 pub const PROTO_APPLE: Entity = Entity {
