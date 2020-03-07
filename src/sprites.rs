@@ -7,6 +7,7 @@ pub const ZOMBIE: SpriteData = (0, 192, 16, 16);
 pub const DRAGON: SpriteData = (0, 208, 16, 16);
 pub const FLAME: SpriteData = (0, 256, 16, 16);
 pub const DOOR: SpriteData = (0, 240, 16, 16);
+pub const NEXT_LEVEL: SpriteData = (0, 272, 16, 16);
 pub const ICONS_HEART: [SpriteData; 4] =
     [(0, 32, 6, 6), (6, 32, 6, 6), (0, 38, 6, 6), (6, 38, 6, 6)];
 pub const ITEM_SWORD: SpriteData = (0, 64, 16, 16);

@@ -68,6 +68,7 @@ impl Ui {
         }
 
         // Inventory
+        // TODO: Print descriptions of items
         if let Some(inventory) = &player.inventory {
             if !inventory.is_empty() {
                 ui_text.push_str("Inventory:\n");

@@ -106,6 +106,8 @@ fn main() -> Result<(), fae::Error> {
                             action_queue.push_back(PlayerAction::Pickup);
                         } else if input::is_key_wait(keycode) {
                             action_queue.push_back(PlayerAction::Wait);
+                        } else if input::is_key_next_level(keycode) {
+                            action_queue.push_back(PlayerAction::NextLevel);
                         } else {
                             // Debug keys, not part of the input system:
 
@@ -135,7 +137,7 @@ fn main() -> Result<(), fae::Error> {
             // where input is disabled while the player
             // animates, and the player gets to see what the enemies
             // do in response. This should be an option.
-            world.update(action);
+            world.update(action, show_debug_info);
         }
 
         let (width, height) = (window.size().0 as f32, window.size().1 as f32);
@@ -153,7 +155,7 @@ fn main() -> Result<(), fae::Error> {
         fae::profiler::refresh();
         let mut ctx: GraphicsContext = fae_ctx.start_frame(width, height, dpi_factor);
 
-        world.render(&mut ctx, &font, &tileset);
+        world.render(&mut ctx, &font, &tileset, show_debug_info);
         ui.render(&mut ctx, &font, &ui_tileset, &world, show_debug_info);
         title_font
             .draw(&mut ctx, "7DRL entry by neonmoe", 16.0, -4.0, 32.0)

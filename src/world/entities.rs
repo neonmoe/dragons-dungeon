@@ -46,6 +46,8 @@ pub const PROTO_PLAYER: Entity = Entity {
     ai: None,
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
 pub const PROTO_WALL: Entity = Entity {
@@ -61,6 +63,8 @@ pub const PROTO_WALL: Entity = Entity {
     ai: None,
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
 pub const PROTO_SKELETON: Entity = Entity {
@@ -79,6 +83,8 @@ pub const PROTO_SKELETON: Entity = Entity {
     ai: Some(Ai::Skeleton),
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
 #[allow(dead_code)]
@@ -95,6 +101,8 @@ pub const PROTO_COBWEB: Entity = Entity {
     ai: None,
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
 pub const PROTO_ZOMBIE: Entity = Entity {
@@ -113,6 +121,8 @@ pub const PROTO_ZOMBIE: Entity = Entity {
     ai: Some(Ai::Zombie),
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
 pub const PROTO_DRAGON: Entity = Entity {
@@ -131,6 +141,8 @@ pub const PROTO_DRAGON: Entity = Entity {
     ai: Some(Ai::Dragon),
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
 pub const PROTO_FLAME: Entity = Entity {
@@ -146,6 +158,8 @@ pub const PROTO_FLAME: Entity = Entity {
     ai: Some(Ai::Flame),
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
 pub const PROTO_DOOR: Entity = Entity {
@@ -161,6 +175,25 @@ pub const PROTO_DOOR: Entity = Entity {
     ai: None,
     drop: None,
     marked_for_death: false,
+    door: true,
+    next_level: false,
+};
+
+pub const PROTO_NEXT_LEVEL: Entity = Entity {
+    position: Position { x: 0, y: 0 },
+    sprite: Sprite(sprites::NEXT_LEVEL),
+    visibility_affected: true,
+    animation: Animation::default(),
+    denies_movement: false,
+    health: None,
+    status_effects: None,
+    damage: None,
+    inventory: None,
+    ai: None,
+    drop: None,
+    marked_for_death: false,
+    door: false,
+    next_level: true,
 };
 
 const PROTO_ITEM: Entity = Entity {
@@ -176,17 +209,25 @@ const PROTO_ITEM: Entity = Entity {
     ai: None,
     drop: None,
     marked_for_death: false,
+    door: false,
+    next_level: false,
 };
 
-pub const PROTO_ITEMS: [Entity; 8] = [
+pub const PROTO_APPLE: Entity = Entity {
+    sprite: Sprite(sprites::ITEM_APPLE),
+    drop: Some(Item::Apple),
+    ..PROTO_ITEM
+};
+
+pub const PROTO_ITEMS: [Entity; 7] = [
     Entity {
         sprite: Sprite(sprites::ITEM_SWORD),
         drop: Some(Item::Sword),
         ..PROTO_ITEM
     },
     Entity {
-        sprite: Sprite(sprites::ITEM_SCYTHE),
-        drop: Some(Item::Scythe),
+        sprite: Sprite(sprites::ITEM_SHIELD),
+        drop: Some(Item::Shield),
         ..PROTO_ITEM
     },
     Entity {
@@ -200,23 +241,18 @@ pub const PROTO_ITEMS: [Entity; 8] = [
         ..PROTO_ITEM
     },
     Entity {
-        sprite: Sprite(sprites::ITEM_SHIELD),
-        drop: Some(Item::Shield),
-        ..PROTO_ITEM
-    },
-    Entity {
         sprite: Sprite(sprites::ITEM_VAMPIRE_TEETH),
         drop: Some(Item::VampireTeeth),
         ..PROTO_ITEM
     },
     Entity {
-        sprite: Sprite(sprites::ITEM_STOPWATCH),
-        drop: Some(Item::Stopwatch(false)),
+        sprite: Sprite(sprites::ITEM_SCYTHE),
+        drop: Some(Item::Scythe),
         ..PROTO_ITEM
     },
     Entity {
-        sprite: Sprite(sprites::ITEM_APPLE),
-        drop: Some(Item::Apple),
+        sprite: Sprite(sprites::ITEM_STOPWATCH),
+        drop: Some(Item::Stopwatch(false)),
         ..PROTO_ITEM
     },
 ];

@@ -29,6 +29,7 @@ pub enum PlayerAction {
     MoveLeft,
     Pickup,
     Wait,
+    NextLevel,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -88,15 +89,16 @@ impl World {
         self.level += 1;
 
         // Generate the new entities
-        let (entities, rooms) = self.generator.generate(self.level);
+        let (entities, rooms, player_origin) = self.generator.generate(self.level);
 
         // Kill the current stage
         self.entities.truncate(1);
+        self.ais.truncate(1);
 
         // Reset player position
         let player = &mut self.entities[0];
-        player.position.x = 0;
-        player.position.y = 0;
+        player.position.x = player_origin.0 + 2;
+        player.position.y = player_origin.1 + 3;
 
         // Add in the new stage
         for new_entity in entities.into_iter() {
@@ -106,7 +108,10 @@ impl World {
         self.rooms = rooms;
 
         self.discovered_rooms.truncate(0);
-        if let Some(player_room) = self.rooms.iter().find(|room| room.contains(0, 0)) {
+        if let Some(player_room) = self.rooms.iter().find(|room| {
+            let &Position { x, y } = &self.entities[0].position;
+            room.contains(x, y)
+        }) {
             self.discovered_rooms.push(player_room.clone());
         }
     }
@@ -139,20 +144,29 @@ impl World {
         index
     }
 
-    pub fn update(&mut self, action: PlayerAction) {
+    pub fn update(&mut self, action: PlayerAction, debug_mode: bool) {
         // Huuuge clone, I know. See the docs for
         // `self.previous_round_entities`.
         self.previous_round_entities = Some(self.entities.clone());
         self.animation_timer = 0.0;
 
         // Update player
-        self.update_player(action);
+        self.update_player(action, debug_mode);
+
+        // TODO: Check if player is dead, game over
+        // TODO: Check if dragon is dead, victory
 
         // Update discovered rooms
-        if let Some(player_room) = self.rooms.iter().find(|room| {
-            let &Position { x, y } = &self.entities[0].position;
-            room.contains(x, y)
-        }) {
+        let player_room = self
+            .rooms
+            .iter()
+            .find(|room| {
+                let &Position { x, y } = &self.entities[0].position;
+                room.contains(x, y)
+            })
+            .map(|room| room.clone());
+
+        if let Some(player_room) = &player_room {
             if !self.discovered_rooms.contains(player_room) {
                 self.discovered_rooms.push(player_room.clone());
             }
@@ -175,7 +189,7 @@ impl World {
             // Update the rest of the entities, in order
             let mut i = 1;
             loop {
-                self.update_at_index(i);
+                self.update_at_index(i, &player_room);
                 i += 1;
                 if i == self.entities.len() {
                     break;
@@ -189,15 +203,22 @@ impl World {
     /// Updates the entity at index `i` and if that entity spawns new
     /// entities that have an index less than `i`, updates those as
     /// well.
-    fn update_at_index(&mut self, i: usize) {
-        if self.entities[i].can_act() {
+    fn update_at_index(&mut self, i: usize, player_room: &Option<Room>) {
+        let can_act = self.entities[i].can_act();
+        let &Position { x, y } = &self.entities[i].position;
+        let player_in_room = if let Some(player_room) = player_room {
+            player_room.contains(x, y)
+        } else {
+            false
+        };
+        if can_act && player_in_room {
             if let Some(ai) = &mut self.ais[i] {
                 let spawns = ai.update(i, &mut self.entities);
                 if let Some(spawns) = spawns {
                     for new_entity in spawns {
                         let index = self.spawn(new_entity);
                         if index < i {
-                            self.update_at_index(index);
+                            self.update_at_index(index, player_room);
                         }
                     }
                 }
@@ -215,7 +236,7 @@ impl World {
         &self.entities[1..]
     }
 
-    fn update_player(&mut self, action: PlayerAction) {
+    fn update_player(&mut self, action: PlayerAction, debug_mode: bool) {
         if self.entities[0].can_act() {
             let mut move_direction = None;
             match action {
@@ -232,14 +253,46 @@ impl World {
                         others,
                     );
                 }
-                PlayerAction::Wait => {}
+                PlayerAction::Wait => {
+                    if debug_mode {
+                        if let Some(health) = &mut self.entities[0].health {
+                            health.current += 1;
+                        }
+                    }
+                }
+                PlayerAction::NextLevel => {
+                    let player = &self.entities[0];
+                    let on_stairs = self
+                        .entities
+                        .iter()
+                        .find(|e| {
+                            e.position.x == player.position.x
+                                && e.position.y == player.position.y
+                                && e.next_level
+                        })
+                        .is_some();
+                    if on_stairs {
+                        self.generate_next_level();
+                        return;
+                    }
+                }
             };
+
             if let Some((xd, yd)) = move_direction {
                 let (player, others) = split_entities(0, &mut self.entities);
                 let moved = move_entity(&mut player.position, others, xd, yd);
 
                 if !moved {
-                    // TODO: Add door functionality
+                    let player = &self.entities[0];
+                    if let Some(door_index) = &self.entities.iter().position(|entity| {
+                        entity.position.x == player.position.x + xd
+                            && entity.position.y == player.position.y + yd
+                            && entity.door
+                    }) {
+                        self.entities[*door_index].marked_for_death = true;
+                        // TODO: Play door opening sound
+                        // TODO: Animate door opening
+                    }
 
                     let (player, others) = split_entities(0, &mut self.entities);
                     attack_direction(
@@ -329,7 +382,13 @@ impl World {
         self.animation_timer += delta_seconds;
     }
 
-    pub fn render(&self, ctx: &mut GraphicsContext, _font: &Font, tileset: &Spritesheet) {
+    pub fn render(
+        &self,
+        ctx: &mut GraphicsContext,
+        _font: &Font,
+        tileset: &Spritesheet,
+        show_debug_info: bool,
+    ) {
         let tile_size = 48.0;
         let drawable_width = ctx.width - crate::ui::UI_AREA_WIDTH;
         let drawable_height = ctx.height;
@@ -375,12 +434,17 @@ impl World {
             let brightness = {
                 let &Position { x, y } = position;
                 if player_room.contains(x, y) {
-                    1.0
+                    (1.0, 1.0, 1.0)
                 } else {
-                    if visibility_affected {
-                        return;
+                    if show_debug_info {
+                        (0.4, 0.05, 0.05)
+                    } else {
+                        if visibility_affected {
+                            return;
+                        } else {
+                            (0.25, 0.25, 0.25)
+                        }
                     }
-                    0.25
                 }
             };
 
@@ -389,9 +453,9 @@ impl World {
                 .coordinates((x, y, tile_size, tile_size))
                 .texture_coordinates(sprite_data)
                 .color((
-                    brightness,
-                    brightness,
-                    brightness,
+                    brightness.0,
+                    brightness.1,
+                    brightness.2,
                     animation.opacity.current,
                 ))
                 .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
@@ -407,22 +471,27 @@ impl World {
             }
         };
 
-        let in_discovered_room = |entity: &'_ &Entity| {
-            self.discovered_rooms
-                .iter()
-                .find(|room| {
-                    let &Position { x, y } = &entity.position;
-                    room.contains(x, y)
-                })
-                .is_some()
+        let in_discovered_room = |(_, entity): &'_ (usize, &Entity)| {
+            if show_debug_info {
+                true
+            } else {
+                self.discovered_rooms
+                    .iter()
+                    .find(|room| {
+                        let &Position { x, y } = &entity.position;
+                        room.contains(x, y)
+                    })
+                    .is_some()
+            }
         };
 
         // Draw the dead
         for (i, position, sprite, animation, visibility_affected) in self
             .entities
             .iter()
-            .filter(in_discovered_room)
             .enumerate()
+            .skip(1)
+            .filter(in_discovered_room)
             .filter(|(_, e)| !e.is_alive() && !e.marked_for_death)
             .map(|(i, e)| {
                 (
@@ -448,8 +517,9 @@ impl World {
         for (i, position, sprite, animation, visibility_affected) in self
             .entities
             .iter()
-            .filter(in_discovered_room)
             .enumerate()
+            .skip(1)
+            .filter(in_discovered_room)
             .filter(|(_, e)| e.is_alive() && !e.marked_for_death)
             .map(|(i, e)| {
                 (
@@ -471,13 +541,25 @@ impl World {
             );
         }
 
+        // Draw player
+        let player = &self.entities[0];
+        draw_entity(
+            &player.position,
+            &player.sprite,
+            &player.animation,
+            get_ai_state(0),
+            player.visibility_affected,
+            layers::ALIVE,
+        );
+
         // Draw hearts
         for (position, animation, health, visibility_affected) in self
             .entities
             .iter()
+            .enumerate()
             .filter(in_discovered_room)
-            .filter(|e| e.is_alive() && !e.marked_for_death)
-            .filter_map(|e| {
+            .filter(|(_, e)| e.is_alive() && !e.marked_for_death)
+            .filter_map(|(_, e)| {
                 e.health
                     .as_ref()
                     .map(|health| (&e.position, &e.animation, health, e.visibility_affected()))

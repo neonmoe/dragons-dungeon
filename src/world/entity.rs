@@ -17,6 +17,8 @@ pub struct Entity {
     pub ai: Option<Ai>,
     pub drop: Option<Item>,
     pub marked_for_death: bool,
+    pub door: bool,
+    pub next_level: bool,
 }
 
 impl Entity {
@@ -30,7 +32,9 @@ impl Entity {
         if let Some(health) = &self.health {
             health.current > 0
         } else {
-            true
+            // Garbage collected entities are, for sure, not
+            // alive. Walls can be though.
+            !self.marked_for_death
         }
     }
 
