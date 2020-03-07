@@ -9,7 +9,8 @@ const KEYS_MOVE_LEFT: [Keycode; 3] = [Keycode::Left, Keycode::A, Keycode::H];
 const KEYS_MOVE_RIGHT: [Keycode; 3] = [Keycode::Right, Keycode::D, Keycode::L];
 const KEYS_PICKUP: [Keycode; 1] = [Keycode::Comma];
 const KEYS_WAIT: [Keycode; 2] = [Keycode::Space, Keycode::Period];
-const KEYS_NEXT_LEVEL: [Keycode; 2] = [Keycode::Greater, Keycode::Return];
+const KEYS_NEXT_LEVEL: [Keycode; 1] = [Keycode::Return];
+const KEYS_RESTART: [Keycode; 1] = [Keycode::R];
 
 pub fn is_key_move_up(keycode: Keycode) -> bool {
     KEYS_MOVE_UP.contains(&keycode)
@@ -37,4 +38,8 @@ pub fn is_key_wait(keycode: Keycode) -> bool {
 
 pub fn is_key_next_level(keycode: Keycode) -> bool {
     KEYS_NEXT_LEVEL.contains(&keycode)
+}
+
+pub fn is_key_restart(keycode: Keycode) -> bool {
+    KEYS_RESTART.contains(&keycode)
 }

@@ -70,8 +70,17 @@ pub struct World {
 
 impl World {
     pub fn new() -> World {
+        let seed = if cfg!(debug_assertions) {
+            1234
+        } else {
+            use std::time::SystemTime;
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|st| st.as_secs())
+                .unwrap_or(1234)
+        };
         let mut world = World {
-            generator: WorldGenerator::new(0),
+            generator: WorldGenerator::new(seed),
             level: 0,
             rooms: Vec::new(),
             discovered_rooms: Vec::new(),
@@ -153,7 +162,6 @@ impl World {
         // Update player
         self.update_player(action, debug_mode);
 
-        // TODO: Check if player is dead, game over
         // TODO: Check if dragon is dead, victory
 
         // Update discovered rooms
@@ -704,12 +712,7 @@ fn calculate_damage(
 
     // Apply attacker bonuses
     if let Some(inv) = attacker_inventory {
-        if inv.has_item(Item::Sword) {
-            damage *= 2;
-        }
-        if inv.has_item(Item::Dagger) {
-            damage /= 2;
-        }
+        damage = inv.damage_after_items(damage);
         if inv.has_item(Item::Scythe) && defender_health.current <= defender_health.max / 2 {
             damage = defender_health.current;
         }

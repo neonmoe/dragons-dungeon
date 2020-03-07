@@ -89,6 +89,13 @@ fn rand_item(rng: &mut Pcg32, level: i32) -> Entity {
     PROTO_ITEMS[index].clone()
 }
 
+fn entity_at(x: i32, y: i32, entities: &[Entity]) -> bool {
+    entities
+        .iter()
+        .find(|e| e.position.x == x && e.position.y == y)
+        .is_some()
+}
+
 #[derive(Debug, Clone)]
 pub struct WorldGenerator {
     rng: Pcg32,
@@ -180,24 +187,20 @@ impl WorldGenerator {
                     }
                 };
 
-                let x_corner = x == 0 || x == ROOM_WIDTH - 1;
-                let y_corner = y == 0 || y == ROOM_HEIGHT - 1;
-                if !(x_corner && y_corner) {
-                    if x == 0 && !room_left {
-                        try_door((-1, 0));
-                    }
-                    if x == ROOM_WIDTH - 1 && !room_right {
-                        try_door((1, 0));
-                    }
-                    if y == 0 && !room_above {
-                        try_door((0, -1));
-                    }
-                    if y == ROOM_HEIGHT - 1 && !room_below {
-                        try_door((0, 1));
-                    }
+                if x == 0 && !room_left {
+                    try_door((-1, 0));
+                }
+                if x == ROOM_WIDTH - 1 && !room_right {
+                    try_door((1, 0));
+                }
+                if y == 0 && !room_above {
+                    try_door((0, -1));
+                }
+                if y == ROOM_HEIGHT - 1 && !room_below {
+                    try_door((0, 1));
                 }
 
-                if border {
+                if border && !entity_at(world_x, world_y, &entities) {
                     entities.push(PROTO_WALL.clone_at(world_x, world_y));
                 }
             }
@@ -213,13 +216,19 @@ impl WorldGenerator {
             RoomType::MonsterRoom { count } => {
                 for _ in 0..count {
                     let mut enemy = rand_enemy(&mut self.rng, level);
-                    enemy.position.x = rand_range(&mut self.rng, min_x, max_x);
-                    enemy.position.y = rand_range(&mut self.rng, min_y, max_y);
-                    // TODO: Check that this position is not occupied
-                    entities.push(enemy);
+                    // Try to place the enemy 50 times at max
+                    for _ in 0..50 {
+                        enemy.position.x = rand_range(&mut self.rng, min_x, max_x);
+                        enemy.position.y = rand_range(&mut self.rng, min_y, max_y);
+                        if !entity_at(enemy.position.x, enemy.position.y, &entities) {
+                            entities.push(enemy);
+                            break;
+                        }
+                    }
                 }
             }
             RoomType::ItemRoom => {
+                // TODO: Don't roll items the player already has in their inventory.
                 let mut item = rand_item(&mut self.rng, level);
                 item.position.x = center_x;
                 item.position.y = center_y;
@@ -234,10 +243,15 @@ impl WorldGenerator {
             }
         }
 
-        if self.rng.next_u32() % 3 == 0 {
-            let x = rand_range(&mut self.rng, min_x, max_x);
-            let y = rand_range(&mut self.rng, min_y, max_y);
-            entities.push(PROTO_APPLE.clone_at(x, y));
+        if 30 < self.rng.next_u32() % 100 {
+            for _ in 0..50 {
+                let x = rand_range(&mut self.rng, min_x, max_x);
+                let y = rand_range(&mut self.rng, min_y, max_y);
+                if !entity_at(x, y, &entities) {
+                    entities.push(PROTO_APPLE.clone_at(x, y));
+                    break;
+                }
+            }
         }
 
         (

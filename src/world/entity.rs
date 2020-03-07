@@ -150,6 +150,16 @@ impl Inventory {
         self.item_left.iter().any(|i| *i == item) || self.item_right.iter().any(|i| *i == item)
     }
 
+    pub fn damage_after_items(&self, mut damage: i32) -> i32 {
+        if self.has_item(Item::Sword) {
+            damage *= 2;
+        }
+        if self.has_item(Item::Dagger) {
+            damage /= 2;
+        }
+        damage
+    }
+
     pub fn iter_mut(&mut self) -> Chain<IterMut<Item>, IterMut<Item>> {
         self.item_left.iter_mut().chain(self.item_right.iter_mut())
     }
@@ -179,8 +189,6 @@ impl Inventory {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-// TODO: Add all the items into the game
-#[allow(dead_code)]
 pub enum Item {
     Sword,
     Scythe,
@@ -214,14 +222,14 @@ impl Item {
 
     pub fn description(&self) -> &str {
         match self {
-            Item::Sword => "[describes a sword]",
-            Item::Scythe => "[describes a scythe]",
-            Item::Hammer => "[describes a hammer]",
-            Item::Dagger => "[describes a dagger]",
-            Item::Shield => "[describes a shield]",
-            Item::VampireTeeth => "[describes a garlic]",
-            Item::Stopwatch(tick) => "[describes a stopwatch]",
-            Item::Apple => "[describes an apple]",
+            Item::Sword => "The trusty ol' Sword. Doubles your damage.",
+            Item::Scythe => "Ooh, sharp! Kills enemies under half health instantly.",
+            Item::Hammer => "What it lacks in edge, it makes up for in impact. Stuns enemies for a turn, making them unable to attack.",
+            Item::Dagger => "For when you want to watch your foes collapse from afar. Poisons the enemies for periodic damage, but halves your normal damage.",
+            Item::Shield => "Every knight's standard equipment. Blocks half of incoming damage.",
+            Item::VampireTeeth => "You feel a great apprehension towards this garlic. Keeping it in your pocket will remind you of your vampirous nature. Heal the damage you do to enemies.",
+            Item::Stopwatch(_) => "Tick, tock, tick, tock... Enemies move only every other turn!",
+            Item::Apple => "A tasty, red apple. Restores health to full when picked up.",
         }
     }
 

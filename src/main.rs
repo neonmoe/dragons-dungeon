@@ -55,9 +55,7 @@ fn main() -> Result<(), fae::Error> {
 
     let mut fae_ctx: Context = Context::new();
     let ttf_plain = include_bytes!("../fonts/world-of-fonts/magic-forest.ttf").to_vec();
-    let ttf_title = include_bytes!("../fonts/world-of-fonts/wizard's-manse.otf").to_vec();
     let font = Font::with_ttf(&mut fae_ctx, ttf_plain).unwrap();
-    let title_font = Font::with_ttf(&mut fae_ctx, ttf_title).unwrap();
     let tileset_image = Image::with_png(include_bytes!("tileset.png"))?;
 
     let tileset = SpritesheetBuilder::default()
@@ -80,6 +78,8 @@ fn main() -> Result<(), fae::Error> {
     let mut action_queue: VecDeque<PlayerAction> = VecDeque::new();
 
     'game_loop: loop {
+        let game_over = !world.player().is_alive();
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {
@@ -108,6 +108,9 @@ fn main() -> Result<(), fae::Error> {
                             action_queue.push_back(PlayerAction::Wait);
                         } else if input::is_key_next_level(keycode) {
                             action_queue.push_back(PlayerAction::NextLevel);
+                        } else if input::is_key_restart(keycode) && game_over {
+                            world = World::new();
+                            action_queue.clear();
                         } else {
                             // Debug keys, not part of the input system:
 
@@ -156,12 +159,14 @@ fn main() -> Result<(), fae::Error> {
         let mut ctx: GraphicsContext = fae_ctx.start_frame(width, height, dpi_factor);
 
         world.render(&mut ctx, &font, &tileset, show_debug_info);
-        ui.render(&mut ctx, &font, &ui_tileset, &world, show_debug_info);
-        title_font
-            .draw(&mut ctx, "7DRL entry by neonmoe", 16.0, -4.0, 32.0)
-            .color((1.0, 1.0, 1.0, 1.0))
-            .z(0.9)
-            .finish();
+        ui.render(
+            &mut ctx,
+            &font,
+            &ui_tileset,
+            &world,
+            game_over,
+            show_debug_info,
+        );
 
         ctx.finish_frame();
         fae_ctx.render(width, height, (0.1, 0.1, 0.1, 1.0));
