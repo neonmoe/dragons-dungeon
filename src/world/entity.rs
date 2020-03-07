@@ -212,6 +212,19 @@ impl Item {
         }
     }
 
+    pub fn description(&self) -> &str {
+        match self {
+            Item::Sword => "[describes a sword]",
+            Item::Scythe => "[describes a scythe]",
+            Item::Hammer => "[describes a hammer]",
+            Item::Dagger => "[describes a dagger]",
+            Item::Shield => "[describes a shield]",
+            Item::VampireTeeth => "[describes a garlic]",
+            Item::Stopwatch(tick) => "[describes a stopwatch]",
+            Item::Apple => "[describes an apple]",
+        }
+    }
+
     pub fn sprite(&self) -> Sprite {
         match self {
             Item::Sword => Sprite(sprites::ITEM_SWORD),

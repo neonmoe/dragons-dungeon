@@ -1,3 +1,4 @@
+use crate::layers;
 use crate::world::{Item, World};
 use fae::{Font, GraphicsContext, Spritesheet};
 use std::sync::Mutex;
@@ -22,6 +23,64 @@ impl DebugState {
     }
 }
 
+struct MenuFlow {
+    x: f32,
+    y: f32,
+    width: f32,
+}
+
+impl MenuFlow {
+    fn new(x: f32, y: f32, width: f32) -> MenuFlow {
+        MenuFlow { x, y, width }
+    }
+
+    fn print(
+        &mut self,
+        ctx: &mut GraphicsContext,
+        font: &Font,
+        message: &str,
+        font_size: f32,
+        indent: f32,
+    ) {
+        if message.is_empty() {
+            self.y += font_size + 2.0;
+        } else if let Some(rect) = font
+            .draw(ctx, message, self.x, self.y, font_size)
+            .max_width(self.width)
+            .visibility(false)
+            .finish()
+        {
+            font.draw(ctx, message, self.x + indent, self.y, font_size)
+                .color((1.0, 1.0, 1.0, 1.0))
+                .max_width(self.width)
+                .z(layers::UI_TEXT)
+                .finish();
+            self.y += rect.height + 2.0;
+        }
+    }
+
+    fn print_header(&mut self, ctx: &mut GraphicsContext, font: &Font, message: &str) {
+        self.print(ctx, font, message, 24.0, 0.0);
+        self.y += 4.0;
+    }
+
+    fn print_stat(&mut self, ctx: &mut GraphicsContext, font: &Font, message: &str) {
+        self.print(ctx, font, message, 18.0, 10.0);
+        self.y += 2.0;
+    }
+
+    fn print_item(&mut self, ctx: &mut GraphicsContext, font: &Font, item: &Item) {
+        self.print(ctx, font, item.name(), 18.0, 10.0);
+        self.y += 6.0;
+        self.print(ctx, font, item.description(), 12.0, 16.0);
+        self.y += 6.0;
+    }
+
+    fn space(&mut self) {
+        self.y += 20.0;
+    }
+}
+
 pub struct Ui {}
 
 impl Ui {
@@ -39,49 +98,53 @@ impl Ui {
     ) {
         let (width, height) = (ctx.width, ctx.height);
 
-        let mut menu_cursor_y = 10.0;
-        let mut menu_cursor_x = width - UI_AREA_WIDTH + menu_cursor_y;
+        let padding = 10.0;
+        let menu_x = width - UI_AREA_WIDTH + padding;
+        let menu_y = padding;
         spritesheet
             .draw(ctx)
             .coordinates((
-                menu_cursor_x,
-                menu_cursor_y,
-                width - menu_cursor_x - menu_cursor_y,
-                height - menu_cursor_y * 2.0,
+                menu_x,
+                menu_y,
+                width - menu_x - padding,
+                height - padding * 2.0,
             ))
             .color((0.2, 0.2, 0.2, 1.0))
-            .z(0.75)
+            .z(layers::UI_BG)
             .finish();
-        menu_cursor_x += 10.0;
-        menu_cursor_y += 10.0;
 
-        let mut ui_text = String::new();
+        let mut menu = MenuFlow::new(menu_x + 10.0, menu_y + 10.0, UI_AREA_WIDTH);
+
         let player = world.player();
         let entities = world.entities();
 
         // Stats:
         if let (Some(damage), Some(health)) = (&player.damage, &player.health) {
-            ui_text.push_str(&format!(
-                "Stats:\n Damage: {}\n Health: {}/{}\n\n",
-                damage.0, health.current, health.max
-            ));
+            menu.print_header(ctx, font, "Stats:");
+            menu.print_stat(ctx, font, &format!("Damage: {}", damage.0));
+            menu.print_stat(
+                ctx,
+                font,
+                &format!("Health: {}/{}", health.current, health.max),
+            );
         }
+        menu.space();
 
         // Inventory
         // TODO: Print descriptions of items
         if let Some(inventory) = &player.inventory {
             if !inventory.is_empty() {
-                ui_text.push_str("Inventory:\n");
-                let mut print_item = |item: &Item| ui_text.push_str(&format!(" {}\n", item.name()));
+                menu.print_header(ctx, font, "Inventory:");
+
                 if let Some(item) = &inventory.item_left {
-                    print_item(item);
+                    menu.print_item(ctx, font, item);
                 }
                 if let Some(item) = &inventory.item_right {
-                    print_item(item);
+                    menu.print_item(ctx, font, item);
                 }
-                ui_text.push('\n');
             }
         }
+        menu.space();
 
         // Pickups:
         for pickup in entities
@@ -89,13 +152,10 @@ impl Ui {
             .filter(|e| e.position.x == player.position.x && e.position.y == player.position.y)
             .filter_map(|e| e.drop)
         {
-            ui_text.push_str(&format!("Pickup [,]:\n {}\n", pickup.name()));
+            menu.print_header(ctx, font, "Pickup [,]:");
+            menu.print_item(ctx, font, &pickup);
         }
-
-        font.draw(ctx, &ui_text, menu_cursor_x, menu_cursor_y, 24.0)
-            .z(1.0)
-            .color((0.9, 0.9, 0.9, 1.0))
-            .finish();
+        menu.space();
 
         if show_debug_info {
             if let Ok(debug_state) = DEBUG_STATE.lock() {
