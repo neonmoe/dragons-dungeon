@@ -1,11 +1,13 @@
 mod ai;
 pub mod entities;
 mod entity;
+mod generator;
 
 use crate::{layers, sprites};
 use ai::AiTrait;
 use entities::*;
 use entity::*;
+use generator::WorldGenerator;
 
 use fae::{Font, GraphicsContext, Spritesheet};
 
@@ -29,7 +31,27 @@ pub enum PlayerAction {
     Wait,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Room {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+impl Room {
+    pub fn contains(&self, x: i32, y: i32) -> bool {
+        self.x <= x && self.y <= y && self.x + self.width > x && self.y + self.height > y
+    }
+}
+
 pub struct World {
+    generator: WorldGenerator,
+    level: i32,
+
+    rooms: Vec<Room>,
+    discovered_rooms: Vec<Room>,
+
     /// An ever-permanent entity collection, which should be
     /// initialized all at once, and never removed from.
     entities: Vec<Entity>,
@@ -48,24 +70,45 @@ pub struct World {
 impl World {
     pub fn new() -> World {
         let mut world = World {
+            generator: WorldGenerator::new(0),
+            level: 0,
+            rooms: Vec::new(),
+            discovered_rooms: Vec::new(),
             entities: Vec::new(),
             ais: Vec::new(),
             previous_round_entities: None,
             animation_timer: 0.0,
         };
         world.spawn(PROTO_PLAYER.clone_at(0, 0));
-
-        world.spawn(PROTO_WALL.clone_at(0, 2));
-        world.spawn(PROTO_DOOR.clone_at(1, 2));
-        world.spawn(PROTO_WALL.clone_at(2, 2));
-
-        let mut y = 3;
-        for item in PROTO_ITEMS.iter() {
-            world.spawn(item.clone_at(1, y));
-            y += 1;
-        }
-
+        world.generate_next_level();
         world
+    }
+
+    fn generate_next_level(&mut self) {
+        self.level += 1;
+
+        // Generate the new entities
+        let (entities, rooms) = self.generator.generate(self.level);
+
+        // Kill the current stage
+        self.entities.truncate(1);
+
+        // Reset player position
+        let player = &mut self.entities[0];
+        player.position.x = 0;
+        player.position.y = 0;
+
+        // Add in the new stage
+        for new_entity in entities.into_iter() {
+            self.spawn(new_entity);
+        }
+        self.previous_round_entities = Some(self.entities.clone());
+        self.rooms = rooms;
+
+        self.discovered_rooms.truncate(0);
+        if let Some(player_room) = self.rooms.iter().find(|room| room.contains(0, 0)) {
+            self.discovered_rooms.push(player_room.clone());
+        }
     }
 
     pub fn spawn(&mut self, entity: Entity) -> usize {
@@ -104,6 +147,16 @@ impl World {
 
         // Update player
         self.update_player(action);
+
+        // Update discovered rooms
+        if let Some(player_room) = self.rooms.iter().find(|room| {
+            let &Position { x, y } = &self.entities[0].position;
+            room.contains(x, y)
+        }) {
+            if !self.discovered_rooms.contains(player_room) {
+                self.discovered_rooms.push(player_room.clone());
+            }
+        }
 
         let mut stopwatch_timestop = false;
         if let Some(inventory) = &mut self.entities[0].inventory {
@@ -290,10 +343,25 @@ impl World {
             )
         };
 
+        let player_room = self
+            .rooms
+            .iter()
+            .find(|room| {
+                let &Position { x, y } = &self.entities[0].position;
+                room.contains(x, y)
+            })
+            .unwrap_or(&Room {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            });
+
         let mut draw_entity = |position: &Position,
                                sprite: &Sprite,
                                animation: &Animation,
                                (ai_offset, flip): (i32, bool),
+                               visibility_affected: bool,
                                z: f32| {
             let x = (position.x as f32 + animation.x.current) * tile_size + offset.0;
             let y = (position.y as f32 + animation.y.current) * tile_size + offset.1;
@@ -303,11 +371,29 @@ impl World {
                 sprite_data.0 += 16;
                 sprite_data.2 *= -1;
             }
+
+            let brightness = {
+                let &Position { x, y } = position;
+                if player_room.contains(x, y) {
+                    1.0
+                } else {
+                    if visibility_affected {
+                        return;
+                    }
+                    0.25
+                }
+            };
+
             tileset
                 .draw(ctx)
                 .coordinates((x, y, tile_size, tile_size))
                 .texture_coordinates(sprite_data)
-                .color((1.0, 1.0, 1.0, animation.opacity.current))
+                .color((
+                    brightness,
+                    brightness,
+                    brightness,
+                    animation.opacity.current,
+                ))
                 .rotation(animation.rotation.current, tile_size / 2.0, tile_size / 2.0)
                 .z(z)
                 .finish();
@@ -321,42 +407,89 @@ impl World {
             }
         };
 
+        let in_discovered_room = |entity: &'_ &Entity| {
+            self.discovered_rooms
+                .iter()
+                .find(|room| {
+                    let &Position { x, y } = &entity.position;
+                    room.contains(x, y)
+                })
+                .is_some()
+        };
+
         // Draw the dead
-        for (i, position, sprite, animation) in self
+        for (i, position, sprite, animation, visibility_affected) in self
             .entities
             .iter()
+            .filter(in_discovered_room)
             .enumerate()
             .filter(|(_, e)| !e.is_alive() && !e.marked_for_death)
-            .map(|(i, e)| (i, &e.position, &e.sprite, &e.animation))
+            .map(|(i, e)| {
+                (
+                    i,
+                    &e.position,
+                    &e.sprite,
+                    &e.animation,
+                    e.visibility_affected(),
+                )
+            })
         {
-            draw_entity(position, sprite, animation, get_ai_state(i), layers::DEAD);
+            draw_entity(
+                position,
+                sprite,
+                animation,
+                get_ai_state(i),
+                visibility_affected,
+                layers::DEAD,
+            );
         }
 
         // Draw the alive (so they get drawn after the dead
-        for (i, position, sprite, animation) in self
+        for (i, position, sprite, animation, visibility_affected) in self
             .entities
             .iter()
+            .filter(in_discovered_room)
             .enumerate()
             .filter(|(_, e)| e.is_alive() && !e.marked_for_death)
-            .map(|(i, e)| (i, &e.position, &e.sprite, &e.animation))
+            .map(|(i, e)| {
+                (
+                    i,
+                    &e.position,
+                    &e.sprite,
+                    &e.animation,
+                    e.visibility_affected(),
+                )
+            })
         {
-            draw_entity(position, sprite, animation, get_ai_state(i), layers::ALIVE);
+            draw_entity(
+                position,
+                sprite,
+                animation,
+                get_ai_state(i),
+                visibility_affected,
+                layers::ALIVE,
+            );
         }
 
         // Draw hearts
-        for (position, animation, health) in self
+        for (position, animation, health, visibility_affected) in self
             .entities
             .iter()
+            .filter(in_discovered_room)
             .filter(|e| e.is_alive() && !e.marked_for_death)
             .filter_map(|e| {
                 e.health
                     .as_ref()
-                    .map(|health| (&e.position, &e.animation, health))
+                    .map(|health| (&e.position, &e.animation, health, e.visibility_affected()))
             })
         {
+            let &Position { x, y } = position;
+            if visibility_affected && !player_room.contains(x, y) {
+                continue;
+            }
             let pos = (
-                (position.x as f32 + animation.x.current) * tile_size + offset.0,
-                (position.y as f32 + animation.y.current) * tile_size + offset.1,
+                (x as f32 + animation.x.current) * tile_size + offset.0,
+                (y as f32 + animation.y.current) * tile_size + offset.1,
             );
             let dark = (0.2, 0.5, 0.8, 0.3 * animation.opacity.current);
             let light = (0.7, 0.05, 0.05, 1.0 * animation.opacity.current);

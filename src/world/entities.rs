@@ -1,4 +1,4 @@
-/// Prototypes of different kinds of entities.
+//! Prototypes of different kinds of entities.
 use super::ai::*;
 use super::entity::*;
 use crate::sprites;
@@ -33,6 +33,7 @@ impl Animation {
 pub const PROTO_PLAYER: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::PLAYER),
+    visibility_affected: false,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -50,6 +51,7 @@ pub const PROTO_PLAYER: Entity = Entity {
 pub const PROTO_WALL: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::WALL),
+    visibility_affected: false,
     animation: Animation::default(),
     denies_movement: true,
     health: None,
@@ -64,6 +66,7 @@ pub const PROTO_WALL: Entity = Entity {
 pub const PROTO_SKELETON: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::SKELETON),
+    visibility_affected: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -82,6 +85,7 @@ pub const PROTO_SKELETON: Entity = Entity {
 pub const PROTO_COBWEB: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::COBWEB),
+    visibility_affected: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,
@@ -96,6 +100,7 @@ pub const PROTO_COBWEB: Entity = Entity {
 pub const PROTO_ZOMBIE: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::ZOMBIE),
+    visibility_affected: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -113,6 +118,7 @@ pub const PROTO_ZOMBIE: Entity = Entity {
 pub const PROTO_DRAGON: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::DRAGON),
+    visibility_affected: true,
     animation: Animation::default(),
     denies_movement: true,
     health: Some(Health {
@@ -130,6 +136,7 @@ pub const PROTO_DRAGON: Entity = Entity {
 pub const PROTO_FLAME: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::FLAME),
+    visibility_affected: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,
@@ -144,6 +151,7 @@ pub const PROTO_FLAME: Entity = Entity {
 pub const PROTO_DOOR: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::DOOR),
+    visibility_affected: false,
     animation: Animation::default(),
     denies_movement: true,
     health: None,
@@ -158,6 +166,7 @@ pub const PROTO_DOOR: Entity = Entity {
 const PROTO_ITEM: Entity = Entity {
     position: Position { x: 0, y: 0 },
     sprite: Sprite(sprites::ITEM_SWORD),
+    visibility_affected: true,
     animation: Animation::default(),
     denies_movement: false,
     health: None,

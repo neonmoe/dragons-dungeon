@@ -9,6 +9,8 @@ sdl2 = { version = "0.33.0" }
 fae = { path = "../fae", features = ["text", "ttf", "png"] }
 log = { version = "0.4.8" }
 lazy_static = { version = "1.4.0" }
+rand_pcg = { version = "0.2.1" }
+rand_core = { version = "*" }
 
 [features]
 default = []

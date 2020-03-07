@@ -7,6 +7,7 @@ use std::option::IterMut;
 pub struct Entity {
     pub position: Position,
     pub sprite: Sprite,
+    pub visibility_affected: bool,
     pub animation: Animation,
     pub denies_movement: bool,
     pub health: Option<Health>,
@@ -31,6 +32,10 @@ impl Entity {
         } else {
             true
         }
+    }
+
+    pub fn visibility_affected(&self) -> bool {
+        self.is_alive() && self.visibility_affected
     }
 
     pub fn can_act(&self) -> bool {
