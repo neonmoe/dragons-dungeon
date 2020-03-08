@@ -1,4 +1,5 @@
 shell.nix
+/builds/*
 
 
 #Added by cargo
