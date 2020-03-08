@@ -17,7 +17,7 @@ use ui::Ui;
 use world::{PlayerAction, World};
 
 static LOGGER: Logger = Logger;
-pub static TITLE: &str = "7DRL 2020 by neonmoe";
+pub static TITLE: &str = "The Dragon's Dungeon";
 
 fn main() -> Result<(), fae::Error> {
     log::set_logger(&LOGGER)
@@ -112,7 +112,7 @@ fn main() -> Result<(), fae::Error> {
                             action_queue.push_back(PlayerAction::Wait);
                         } else if input::is_key_next_level(keycode) {
                             action_queue.push_back(PlayerAction::NextLevel);
-                        } else if input::is_key_restart(keycode) && game_over {
+                        } else if input::is_key_restart(keycode) && (game_over || victory) {
                             world = World::new();
                             action_queue.clear();
                         } else {

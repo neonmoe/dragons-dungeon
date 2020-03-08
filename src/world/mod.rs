@@ -441,9 +441,9 @@ impl World {
             let x = (position.x as f32 + animation.x.current) * tile_size + offset.0;
             let y = (position.y as f32 + animation.y.current) * tile_size + offset.1;
             let mut sprite_data = sprite.0;
-            sprite_data.0 += 16 * ai_offset;
+            sprite_data.0 += sprite_data.2 * ai_offset;
             if flip {
-                sprite_data.0 += 16;
+                sprite_data.0 += sprite_data.2;
                 sprite_data.2 *= -1;
             }
 
@@ -671,14 +671,12 @@ pub fn attack_direction(
 
         if let Some(target_status_effects) = &mut target.status_effects {
             if has_item(Item::Dagger) {
-                let poison_duration = 2;
-                let poison_max_stacks = 2;
+                let poison_duration = 6;
                 let poisoned_already =
                     target_status_effects
                         .iter_mut()
                         .any(|status_effect| match status_effect {
-                            StatusEffect::Poison { stacks, duration } => {
-                                *stacks = (*stacks + 1).min(poison_max_stacks);
+                            StatusEffect::Poison { duration, .. } => {
                                 *duration = poison_duration;
                                 true
                             }
@@ -705,7 +703,7 @@ pub fn attack_direction(
 
     if has_item(Item::VampireTeeth) {
         if let Some(health) = health {
-            health.current = (health.current + damage_dealt).min(health.max);
+            health.current = (health.current + damage_dealt / 2).min(health.max);
         }
     }
 }
